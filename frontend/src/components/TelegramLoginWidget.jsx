@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import apiClient from '../../api/client';
+import apiClient from '../api/client';
 
 const TelegramLoginWidget = ({ onAuth }) => {
   const containerRef = useRef(null);

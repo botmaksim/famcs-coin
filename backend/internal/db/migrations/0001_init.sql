@@ -56,47 +56,7 @@ CREATE TABLE transactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6. Пул ежедневных викторин
-CREATE TABLE quizzes (
-    id SERIAL PRIMARY KEY,
-    question TEXT NOT NULL,
-    options JSONB NOT NULL,                        -- Массив вариантов ответов: ["Option 1", "Option 2"]
-    correct_option INT NOT NULL,                   -- Индекс правильного ответа
-    reward NUMERIC(20, 2) NOT NULL,
-    active_date DATE UNIQUE                        -- На какой день назначена задача
-);
 
--- 7. Результаты викторин юзеров (Чтобы исключить повторное прохождение)
-CREATE TABLE user_quizzes (
-    user_id BIGINT REFERENCES users(tg_id) ON DELETE CASCADE,
-    quiz_id INT REFERENCES quizzes(id) ON DELETE CASCADE,
-    is_correct BOOLEAN NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id, quiz_id)
-);
-
--- 8. События тотализатора
-CREATE TABLE bet_events (
-    id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    options JSONB NOT NULL,                        -- Варианты исходов: ["Да", "Нет"]
-    status VARCHAR(20) DEFAULT 'open',             -- 'open' (прием ставок), 'closed' (событие началось), 'resolved' (расчитано), 'refunded' (отменено)
-    winner_option_index INT DEFAULT NULL,
-    pool_size NUMERIC(20, 2) DEFAULT 0.00,
-    created_by BIGINT REFERENCES users(tg_id),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- 9. Ставки пользователей
-CREATE TABLE user_bets (
-    id BIGSERIAL PRIMARY KEY,
-    event_id INT REFERENCES bet_events(id) ON DELETE CASCADE,
-    user_id BIGINT REFERENCES users(tg_id) ON DELETE CASCADE,
-    selected_option INT NOT NULL,
-    amount NUMERIC(20, 2) NOT NULL,
-    payout NUMERIC(20, 2) DEFAULT 0.00,            -- Заполняется при выигрыше или возврате
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
 
 -- 10. Таблица предложений фич (DAO)
 CREATE TABLE proposals (
@@ -112,5 +72,3 @@ CREATE TABLE proposals (
 
 CREATE INDEX idx_users_balance ON users(balance DESC) WHERE is_hidden = FALSE; -- Быстрый рендер топа юзеров
 CREATE INDEX idx_squads_points ON squads(total_points DESC);                 -- Быстрый рендер топа групп
-CREATE INDEX idx_quizzes_date ON quizzes(active_date);                       -- Поиск викторины на сегодня
-CREATE INDEX idx_user_bets_event ON user_bets(event_id);                     -- Выборка всех ставок для распределения пула

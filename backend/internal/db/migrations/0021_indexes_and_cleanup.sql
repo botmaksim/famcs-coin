@@ -1,5 +1,5 @@
 -- Индексы для ускорения фильтрации (DAO и Крипта)
-CREATE INDEX IF NOT EXISTS idx_dao_proposals_status ON dao_proposals(status);
+CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
 CREATE INDEX IF NOT EXISTS idx_crypto_tx_status ON crypto_transactions(status);
 
 -- Индексы для внешних ключей (устраняет Full Table Scan при каскадном удалении или джоинах)
