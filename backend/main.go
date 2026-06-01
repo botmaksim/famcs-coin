@@ -13,9 +13,15 @@ import (
 	"famcscoin-backend/internal/db"
 	"famcscoin-backend/internal/repository"
 	"famcscoin-backend/internal/worker"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, relying on environment variables")
+	}
+	config.InitEnvVars()
+
 	port := os.Getenv("BACKEND_PORT")
 	if port == "" {
 		port = "8083"
@@ -103,6 +109,40 @@ func main() {
 	if err != nil {
 		log.Printf("Betting migration error/skip: %v", err)
 	}
+	err = database.RunMigrations("./internal/db/migrations/0015_admin_invites.sql")
+	if err != nil {
+		log.Printf("Admin invites migration error/skip: %v", err)
+	}
+
+	err = database.RunMigrations("./internal/db/migrations/0016_hall_of_fame.sql")
+	if err != nil {
+		log.Printf("Hall of fame migration error/skip: %v", err)
+	}
+
+	err = database.RunMigrations("./internal/db/migrations/0017_rbac_permissions.sql")
+	if err != nil {
+		log.Printf("RBAC permissions migration error/skip: %v", err)
+	}
+
+	err = database.RunMigrations("./internal/db/migrations/0018_dao_moderation.sql")
+	if err != nil {
+		log.Printf("DAO moderation migration error/skip: %v", err)
+	}
+
+	err = database.RunMigrations("./internal/db/migrations/0019_crypto_transactions.sql")
+	if err != nil {
+		log.Printf("Crypto transactions migration error/skip: %v", err)
+	}
+
+	err = database.RunMigrations("./internal/db/migrations/0020_ban_system.sql")
+	if err != nil {
+		log.Printf("Ban system migration error/skip: %v", err)
+	}
+
+	err = database.RunMigrations("./internal/db/migrations/0021_indexes_and_cleanup.sql")
+	if err != nil {
+		log.Printf("Indexes migration error/skip: %v", err)
+	}
 
 	// Загружаем настройки в кэш при старте
 	if err := config.GlobalSettings.LoadFromDB(context.Background(), database.Pool); err != nil {
@@ -112,8 +152,11 @@ func main() {
 	// Воркеры
 	go worker.StartEconomyWorker(context.Background(), database.Pool)
 
-	// Телеграм Бот
-	tgBot, err := bot.NewBot(botToken, repository.NewUserRepository(database.Pool))
+	cryptoRepo := repository.NewCryptoRepository(database.Pool)
+	userRepo := repository.NewUserRepository(database.Pool)
+
+	// Initialize Bot
+	tgBot, err := bot.NewBot(botToken, userRepo, cryptoRepo)
 	if err != nil {
 		log.Printf("Failed to initialize telegram bot: %v", err)
 	} else {

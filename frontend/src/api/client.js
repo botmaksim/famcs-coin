@@ -11,18 +11,21 @@ const apiClient = axios.create({
 // Interceptor to attach Telegram initData
 apiClient.interceptors.request.use(
   (config) => {
-    let initData = '';
-
-    // Check if we are running inside Telegram Web App
-    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
-      initData = window.Telegram.WebApp.initData;
-    } else if (import.meta.env.DEV) {
-      // Локальная разработка: используем мок-данные из .env
-      initData = import.meta.env.VITE_MOCK_INIT_DATA || 'test_dev_token';
-    }
-
-    if (initData) {
-      config.headers.Authorization = `Bearer ${initData}`;
+    // Priority 1: Web Admin auth token
+    if (localStorage.getItem('web_admin_auth')) {
+      config.headers.Authorization = `Bearer ${localStorage.getItem('web_admin_auth')}`;
+    } 
+    // Priority 2: Web User JWT token
+    else if (localStorage.getItem('web_user_token')) {
+      config.headers.Authorization = `Bearer ${localStorage.getItem('web_user_token')}`;
+    } 
+    // Priority 3: TMA initData
+    else if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+      config.headers.Authorization = `tma ${window.Telegram.WebApp.initData}`;
+    } 
+    // Priority 4: Dev Mock
+    else if (import.meta.env.DEV) {
+      config.headers.Authorization = `tma ${import.meta.env.VITE_MOCK_INIT_DATA || 'test_dev_token'}`;
     }
 
     return config;

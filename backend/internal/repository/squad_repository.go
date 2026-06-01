@@ -11,6 +11,7 @@ import (
 
 type SquadRepository interface {
 	GetSquads(ctx context.Context) ([]*models.Squad, error)
+	GetTopSquads(ctx context.Context, limit int) ([]*models.Squad, error)
 	GetSquadByID(ctx context.Context, id int) (*models.Squad, error)
 	CreateSquadWithTx(ctx context.Context, tgID int64, name string, price float64) (int, error)
 	DonateToSquad(ctx context.Context, tgID int64, amount float64) error
@@ -45,6 +46,33 @@ func (r *squadRepository) GetSquads(ctx context.Context) ([]*models.Squad, error
 		)
 		if err != nil {
 			return nil, fmt.Errorf("GetSquads scan error: %w", err)
+		}
+		squads = append(squads, squad)
+	}
+	return squads, nil
+}
+
+func (r *squadRepository) GetTopSquads(ctx context.Context, limit int) ([]*models.Squad, error) {
+	query := `
+		SELECT id, name, total_points, treasury_balance, boost_until
+		FROM squads
+		ORDER BY total_points DESC
+		LIMIT $1
+	`
+	rows, err := r.pool.Query(ctx, query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("GetTopSquads query error: %w", err)
+	}
+	defer rows.Close()
+
+	var squads []*models.Squad
+	for rows.Next() {
+		squad := &models.Squad{}
+		err := rows.Scan(
+			&squad.ID, &squad.Name, &squad.TotalPoints, &squad.TreasuryBalance, &squad.BoostUntil,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("GetTopSquads scan error: %w", err)
 		}
 		squads = append(squads, squad)
 	}

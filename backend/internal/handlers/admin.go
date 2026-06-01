@@ -62,8 +62,9 @@ func (h *AdminHandler) BonusDrop(w http.ResponseWriter, r *http.Request) {
 }
 
 type roleRequest struct {
-	TgID int64  `json:"tg_id"`
-	Role string `json:"role"`
+	TgID        int64    `json:"tg_id"`
+	Role        string   `json:"role"`
+	Permissions []string `json:"permissions"`
 }
 
 func (h *AdminHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +91,7 @@ func (h *AdminHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.userRepo.UpdateUserRole(r.Context(), adminID, req.TgID, req.Role)
+	err := h.userRepo.UpdateUserRoleAndPermissions(r.Context(), adminID, req.TgID, req.Role, req.Permissions)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -143,3 +144,112 @@ func (h *AdminHandler) ResolveBet(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type generateInviteRequest struct {
+	Role string `json:"role"`
+}
+
+func (h *AdminHandler) GenerateInvite(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ctxValue := r.Context().Value(middleware.UserIDKey)
+	if ctxValue == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	adminID := ctxValue.(int64)
+
+	var req generateInviteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.Role != "admin" && req.Role != "superadmin" {
+		http.Error(w, "Invalid role", http.StatusBadRequest)
+		return
+	}
+
+	token, err := h.userRepo.GenerateAdminInvite(r.Context(), adminID, req.Role)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"token":   token,
+	})
+}
+
+type acceptInviteRequest struct {
+	Token string `json:"token"`
+	TgID  int64  `json:"tg_id"`
+}
+
+func (h *AdminHandler) AcceptInvite(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req acceptInviteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.Token == "" || req.TgID == 0 {
+		http.Error(w, "Missing token or tg_id", http.StatusBadRequest)
+		return
+	}
+
+	err := h.userRepo.AcceptAdminInvite(r.Context(), req.Token, req.TgID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+	})
+}
+
+type banRequest struct {
+	TgID     int64  `json:"tg_id"`
+	Reason   string `json:"reason"`
+	IsBanned bool   `json:"is_banned"`
+}
+
+func (h *AdminHandler) BanUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req banRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.TgID == 0 {
+		http.Error(w, "Missing tg_id", http.StatusBadRequest)
+		return
+	}
+
+	err := h.userRepo.BanUser(r.Context(), req.TgID, req.IsBanned, req.Reason)
+	if err != nil {
+		http.Error(w, "Failed to ban user", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+	})
+}

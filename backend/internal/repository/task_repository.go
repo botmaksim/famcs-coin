@@ -11,6 +11,10 @@ import (
 
 type TaskRepository interface {
 	GetTasks(ctx context.Context, tgID int64) ([]*models.Task, error)
+	GetAllTasks(ctx context.Context) ([]*models.Task, error)
+	CreateTask(ctx context.Context, task *models.Task) error
+	UpdateTask(ctx context.Context, task *models.Task) error
+	DeleteTask(ctx context.Context, taskID int) error
 	ClaimTaskReward(ctx context.Context, tgID int64, taskID int) (float64, error)
 }
 
@@ -49,6 +53,79 @@ func (r *taskRepository) GetTasks(ctx context.Context, tgID int64) ([]*models.Ta
 		tasks = append(tasks, t)
 	}
 	return tasks, nil
+}
+
+func (r *taskRepository) GetAllTasks(ctx context.Context) ([]*models.Task, error) {
+	query := `
+		SELECT id, title, description, reward_coins, link_url
+		FROM tasks
+		ORDER BY id ASC
+	`
+	rows, err := r.pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("GetAllTasks query error: %w", err)
+	}
+	defer rows.Close()
+
+	var tasks []*models.Task
+	for rows.Next() {
+		t := &models.Task{}
+		err := rows.Scan(
+			&t.ID, &t.Title, &t.Description, &t.RewardCoins, &t.LinkURL,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("GetAllTasks scan error: %w", err)
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, nil
+}
+
+func (r *taskRepository) CreateTask(ctx context.Context, task *models.Task) error {
+	query := `
+		INSERT INTO tasks (title, description, reward_coins, link_url)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id
+	`
+	err := r.pool.QueryRow(ctx, query, task.Title, task.Description, task.RewardCoins, task.LinkURL).Scan(&task.ID)
+	if err != nil {
+		return fmt.Errorf("CreateTask error: %w", err)
+	}
+	return nil
+}
+
+func (r *taskRepository) UpdateTask(ctx context.Context, task *models.Task) error {
+	query := `
+		UPDATE tasks 
+		SET title = $1, description = $2, reward_coins = $3, link_url = $4
+		WHERE id = $5
+	`
+	res, err := r.pool.Exec(ctx, query, task.Title, task.Description, task.RewardCoins, task.LinkURL, task.ID)
+	if err != nil {
+		return fmt.Errorf("UpdateTask error: %w", err)
+	}
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("task not found")
+	}
+	return nil
+}
+
+func (r *taskRepository) DeleteTask(ctx context.Context, taskID int) error {
+	// Let's delete user_tasks first to avoid foreign key violations, assuming there is a cascade or we do it manually.
+	// Actually we should just let cascade handle it, or delete manually.
+	_, err := r.pool.Exec(ctx, "DELETE FROM user_tasks WHERE task_id = $1", taskID)
+	if err != nil {
+		return fmt.Errorf("DeleteTask user_tasks error: %w", err)
+	}
+
+	res, err := r.pool.Exec(ctx, "DELETE FROM tasks WHERE id = $1", taskID)
+	if err != nil {
+		return fmt.Errorf("DeleteTask error: %w", err)
+	}
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("task not found")
+	}
+	return nil
 }
 
 func (r *taskRepository) ClaimTaskReward(ctx context.Context, tgID int64, taskID int) (float64, error) {

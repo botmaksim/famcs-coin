@@ -28,8 +28,13 @@ type User struct {
 	IsAnonymousTips bool       `json:"is_anonymous_tips"`
 	ReferredBy      *int64     `json:"referred_by,omitempty"`
 	SleepUntil      *time.Time `json:"sleep_until,omitempty"`
-	SuspendedAt     *time.Time `json:"suspended_at"`
-	LastActiveAt    time.Time  `json:"last_active_at"`
+	SuspendedAt     *time.Time `json:"suspended_at,omitempty"`
+	LastActiveAt    *time.Time `json:"last_active_at,omitempty"`
+	Responsibility  *string    `json:"responsibility,omitempty"`
+	Permissions     []string   `json:"permissions"`
+	WalletAddr      *string    `json:"wallet_address"`
+	IsBanned        bool       `json:"is_banned"`
+	BanReason       *string    `json:"ban_reason,omitempty"`
 }
 
 type Upgrade struct {
@@ -141,4 +146,14 @@ type Skin struct {
 	ImageURL  string `json:"image_url"`
 	IsOwned   bool   `json:"is_owned"`
 	IsActive  bool   `json:"is_active"`
+}
+
+type CryptoTransaction struct {
+	ID        int       `json:"id"`
+	UserID    int64     `json:"user_id"`
+	Type      string    `json:"type"`
+	Amount    int64     `json:"amount"`
+	TxHash    *string   `json:"tx_hash"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
 }

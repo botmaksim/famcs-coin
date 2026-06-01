@@ -203,7 +203,7 @@ const Terminal = () => {
              <img 
               src={user.active_skin_url || "/logo.png"} 
               alt="TAP" 
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              style={{ width: '100%', height: '100%', maxWidth: '200px', objectFit: 'cover', borderRadius: '50%', overflow: 'hidden' }}
               onError={(e) => {
                 e.target.style.display = 'none';
                 e.target.parentNode.innerHTML = '<span style="font-size: 40px; font-weight: bold; pointer-events: none; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5))">TAP!</span>';

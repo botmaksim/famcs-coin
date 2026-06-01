@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { UserProvider } from './context/UserContext';
 import Terminal from './pages/TMA/Terminal';
 import College from './pages/TMA/College';
@@ -6,13 +7,40 @@ import Leaderboard from './pages/TMA/Leaderboard';
 import DAO from './pages/TMA/DAO';
 import Tasks from './pages/TMA/Tasks';
 import Events from './pages/TMA/Events';
-
-import Admin from './pages/TMA/Admin';
 import { useUser } from './context/UserContext';
+import AcceptInvite from './pages/Web/AcceptInvite';
+import WebDAO from './pages/Web/WebDAO';
 
-function AppContent({ currentPage, setCurrentPage, renderPage }) {
+const Wallet = lazy(() => import('./pages/TMA/Wallet'));
+const WebInfo = lazy(() => import('./pages/Web/WebInfo'));
+const WebAdmin = lazy(() => import('./pages/Web/WebAdmin'));
+const WebLeaderboard = lazy(() => import('./pages/Web/WebLeaderboard'));
+const WebHallOfFame = lazy(() => import('./pages/Web/WebHallOfFame'));
+
+const TmaGuard = ({ children }) => {
+  const isTelegram = window.Telegram?.WebApp?.initData?.length > 0;
+  // Fallback for local development if initData is mocked
+  const isLocalDev = process.env.NODE_ENV === 'development';
+  return (isTelegram || isLocalDev) ? children : <Navigate to="/info" replace />;
+};
+
+function TMA_Layout() {
+  const [currentPage, setCurrentPage] = useState('terminal');
   const { user } = useUser();
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'terminal': return <Terminal />;
+      case 'tasks': return <Tasks />;
+      case 'events': return <Events />;
+      case 'college': return <College />;
+      case 'leaderboard': return <Leaderboard />;
+      case 'dao': return <DAO />;
+      case 'wallet': return <Wallet />;
+      default: return <Terminal />;
+    }
+  };
 
   return (
     <div className="app-container" style={{ 
@@ -27,7 +55,9 @@ function AppContent({ currentPage, setCurrentPage, renderPage }) {
       borderLeft: '1px solid var(--glass-border)',
       borderRight: '1px solid var(--glass-border)',
     }}>
-      {renderPage()}
+      <Suspense fallback={<div style={{color: 'white', padding: '20px', textAlign: 'center'}}>Загрузка...</div>}>
+        {renderPage()}
+      </Suspense>
       
       {/* Bottom Navigation */}
       <div style={{
@@ -74,56 +104,65 @@ function AppContent({ currentPage, setCurrentPage, renderPage }) {
           style={{ padding: '8px', cursor: 'pointer', fontSize: '12px', transition: '0.2s', fontWeight: currentPage === 'dao' ? 'bold' : 'normal', color: currentPage === 'dao' ? 'var(--accent-color)' : '#94a3b8' }}>
           DAO
         </div>
-        {isAdmin && (
-          <div 
-            onClick={() => setCurrentPage('admin')}
-            style={{ padding: '8px', cursor: 'pointer', fontSize: '12px', transition: '0.2s', fontWeight: currentPage === 'admin' ? 'bold' : 'normal', color: currentPage === 'admin' ? '#ef4444' : '#94a3b8' }}>
-            👑
-          </div>
-        )}
+        <div 
+          onClick={() => setCurrentPage('wallet')}
+          style={{ padding: '8px', cursor: 'pointer', fontSize: '12px', transition: '0.2s', fontWeight: currentPage === 'wallet' ? 'bold' : 'normal', color: currentPage === 'wallet' ? 'var(--accent-color)' : '#94a3b8' }}>
+          💳
+        </div>
       </div>
     </div>
   );
 }
 
 function App() {
-  const [tgTheme, setTgTheme] = useState({});
-  const [currentPage, setCurrentPage] = useState('terminal');
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     // Инициализация Telegram Web App
     const tg = window.Telegram?.WebApp;
-    if (tg) {
+    
+    // Check if we are inside Telegram by checking initData
+    const isTelegram = tg && tg.initData && tg.initData.length > 0;
+
+    if (isTelegram) {
       tg.ready();
       tg.expand(); // Открываем приложение на весь экран
-
-      // Сохраняем тему для стилизации, если необходимо (например, передать в CSS Variables)
-      if (tg.themeParams) {
-        setTgTheme(tg.themeParams);
-        // Применяем цвета к document.body
-        document.body.style.backgroundColor = tg.themeParams.bg_color || '#ffffff';
-        document.body.style.color = tg.themeParams.text_color || '#000000';
+      
+      // Redirect to /app if we are at root
+      if (location.pathname === '/') {
+        navigate('/app', { replace: true });
       }
+    } else {
+      // If NOT in Telegram, ensure we are not in /app routes accidentally unless explicitly testing
+      // Actually we just let them view / if they are not in Telegram
     }
-  }, []);
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'terminal': return <Terminal />;
-      case 'tasks': return <Tasks />;
-      case 'events': return <Events />;
-      case 'college': return <College />;
-      case 'leaderboard': return <Leaderboard />;
-      case 'dao': return <DAO />;
-      case 'admin': return <Admin />;
-      default: return <Terminal />;
-    }
-  };
+  }, [navigate, location.pathname]);
 
   return (
-    <UserProvider>
-      <AppContent currentPage={currentPage} setCurrentPage={setCurrentPage} renderPage={renderPage} />
-    </UserProvider>
+    <Suspense fallback={<div style={{color: 'white', padding: '20px', textAlign: 'center'}}>Загрузка приложения...</div>}>
+      <Routes>
+        <Route path="/" element={<WebInfo />} />
+        <Route path="/info" element={<WebInfo />} />
+        <Route path="/docs" element={<WebInfo />} />
+        <Route path="/leaderboard" element={<WebLeaderboard />} />
+        <Route path="/hall-of-fame" element={<WebHallOfFame />} />
+        <Route path="/dao" element={<WebDAO />} />
+        <Route path="/admin-panel" element={
+          <UserProvider>
+            <WebAdmin />
+          </UserProvider>
+        } />
+        <Route path="/invite" element={<AcceptInvite />} />
+        <Route path="/app/*" element={
+          <TmaGuard>
+            <UserProvider>
+              <TMA_Layout />
+            </UserProvider>
+          </TmaGuard>
+        } />
+      </Routes>
+    </Suspense>
   );
 }
 

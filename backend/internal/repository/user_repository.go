@@ -19,7 +19,12 @@ type UserRepository interface {
 	UpdateSleepUntil(ctx context.Context, tgID int64, sleepUntil *time.Time) error
 	TipUser(ctx context.Context, senderID, receiverID int64, amount float64) error
 	BonusDrop(ctx context.Context, adminID, targetID int64, amount float64) error
-	UpdateUserRole(ctx context.Context, adminID, targetID int64, newRole string) error
+	UpdateUserRoleAndPermissions(ctx context.Context, adminID, targetID int64, newRole string, permissions []string) error
+	GenerateAdminInvite(ctx context.Context, adminID int64, role string) (string, error)
+	AcceptAdminInvite(ctx context.Context, token string, tgID int64) error
+	GetPublicLeaderboard(ctx context.Context, limit int) ([]*models.User, error)
+	GetHallOfFame(ctx context.Context) ([]*models.User, error)
+	BanUser(ctx context.Context, tgID int64, isBanned bool, reason string) error
 }
 
 type userRepository struct {
@@ -107,7 +112,7 @@ func (r *userRepository) CreateOrUpdateUser(ctx context.Context, user *models.Us
 func (r *userRepository) GetUserByID(ctx context.Context, tgID int64) (*models.User, error) {
 	query := `
 		SELECT u.tg_id, u.username, u.custom_name, u.avatar_url, u.role, u.balance, u.energy, u.max_energy, 
-		       u.passive_income, u.squad_id, u.is_hidden, u.is_anonymous_tips, u.sleep_until, u.suspended_at, u.last_active_at, s.image_url
+		       u.passive_income, u.squad_id, u.is_hidden, u.is_anonymous_tips, u.sleep_until, u.suspended_at, u.last_active_at, s.image_url, u.permissions, u.wallet_address, u.is_banned, u.ban_reason
 		FROM users u
 		LEFT JOIN skins s ON u.active_skin_id = s.id
 		WHERE u.tg_id = $1
@@ -117,7 +122,7 @@ func (r *userRepository) GetUserByID(ctx context.Context, tgID int64) (*models.U
 	err := r.pool.QueryRow(ctx, query, tgID).Scan(
 		&user.TgID, &user.Username, &user.CustomName, &avatarURL, &user.Role, &user.Balance,
 		&user.Energy, &user.MaxEnergy, &user.PassiveIncome, &user.SquadID,
-		&user.IsHidden, &user.IsAnonymousTips, &user.SleepUntil, &user.SuspendedAt, &user.LastActiveAt, &user.ActiveSkinURL,
+		&user.IsHidden, &user.IsAnonymousTips, &user.SleepUntil, &user.SuspendedAt, &user.LastActiveAt, &user.ActiveSkinURL, &user.Permissions, &user.WalletAddr, &user.IsBanned, &user.BanReason,
 	)
 	if avatarURL != nil {
 		user.AvatarURL = *avatarURL
@@ -168,6 +173,73 @@ func (r *userRepository) GetLeaderboard(ctx context.Context, limit int) ([]*mode
 		err := rows.Scan(&user.TgID, &user.Username, &user.CustomName, &user.Balance, &user.PassiveIncome, &user.SquadID)
 		if err != nil {
 			return nil, fmt.Errorf("GetLeaderboard scan error: %w", err)
+		}
+		users = append(users, user)
+	}
+	return users, nil
+}
+
+func (r *userRepository) GetPublicLeaderboard(ctx context.Context, limit int) ([]*models.User, error) {
+	// Returns users ordered by balance. If is_hidden, mask name and avatar.
+	query := `
+		SELECT tg_id, username, custom_name, balance, passive_income, squad_id, is_hidden, avatar_url, s.image_url
+		FROM users u
+		LEFT JOIN skins s ON u.active_skin_id = s.id
+		ORDER BY balance DESC
+		LIMIT $1
+	`
+	rows, err := r.pool.Query(ctx, query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("GetPublicLeaderboard query error: %w", err)
+	}
+	defer rows.Close()
+
+	var users []*models.User
+	for rows.Next() {
+		user := &models.User{}
+		var avatarURL *string
+		err := rows.Scan(&user.TgID, &user.Username, &user.CustomName, &user.Balance, &user.PassiveIncome, &user.SquadID, &user.IsHidden, &avatarURL, &user.ActiveSkinURL)
+		if err != nil {
+			return nil, fmt.Errorf("GetPublicLeaderboard scan error: %w", err)
+		}
+		
+		if user.IsHidden {
+			user.Username = "Анонимный Студент"
+			user.CustomName = nil
+			user.AvatarURL = ""
+			user.ActiveSkinURL = nil
+		} else if avatarURL != nil {
+			user.AvatarURL = *avatarURL
+		}
+		users = append(users, user)
+	}
+	return users, nil
+}
+
+func (r *userRepository) GetHallOfFame(ctx context.Context) ([]*models.User, error) {
+	query := `
+		SELECT tg_id, username, custom_name, avatar_url, role, responsibility, s.image_url
+		FROM users u
+		LEFT JOIN skins s ON u.active_skin_id = s.id
+		WHERE role IN ('admin', 'superadmin')
+		ORDER BY role DESC, tg_id ASC
+	`
+	rows, err := r.pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("GetHallOfFame query error: %w", err)
+	}
+	defer rows.Close()
+
+	var users []*models.User
+	for rows.Next() {
+		user := &models.User{}
+		var avatarURL *string
+		err := rows.Scan(&user.TgID, &user.Username, &user.CustomName, &avatarURL, &user.Role, &user.Responsibility, &user.ActiveSkinURL)
+		if err != nil {
+			return nil, fmt.Errorf("GetHallOfFame scan error: %w", err)
+		}
+		if avatarURL != nil {
+			user.AvatarURL = *avatarURL
 		}
 		users = append(users, user)
 	}
@@ -282,14 +354,18 @@ func (r *userRepository) BonusDrop(ctx context.Context, adminID, targetID int64,
 	return tx.Commit(ctx)
 }
 
-func (r *userRepository) UpdateUserRole(ctx context.Context, adminID, targetID int64, newRole string) error {
+func (r *userRepository) UpdateUserRoleAndPermissions(ctx context.Context, adminID, targetID int64, newRole string, permissions []string) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
-	res, err := tx.Exec(ctx, "UPDATE users SET role = $1 WHERE tg_id = $2", newRole, targetID)
+	if permissions == nil {
+		permissions = []string{}
+	}
+
+	res, err := tx.Exec(ctx, "UPDATE users SET role = $1, permissions = $2 WHERE tg_id = $3", newRole, permissions, targetID)
 	if err != nil {
 		return fmt.Errorf("failed to update role: %w", err)
 	}
@@ -298,11 +374,86 @@ func (r *userRepository) UpdateUserRole(ctx context.Context, adminID, targetID i
 	}
 
 	// Admin log
-	details := fmt.Sprintf("Changed role to %s", newRole)
+	details := fmt.Sprintf("Changed role to %s with permissions %v", newRole, permissions)
 	_, err = tx.Exec(ctx, "INSERT INTO admin_logs (admin_id, action, target_user_id, details) VALUES ($1, 'update_role', $2, $3)", adminID, targetID, details)
 	if err != nil {
 		return fmt.Errorf("failed to write admin log: %w", err)
 	}
 
 	return tx.Commit(ctx)
+}
+
+func (r *userRepository) GenerateAdminInvite(ctx context.Context, adminID int64, role string) (string, error) {
+	var token string
+	err := r.pool.QueryRow(ctx, "SELECT gen_random_uuid()").Scan(&token)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate uuid: %w", err)
+	}
+
+	_, err = r.pool.Exec(ctx, "INSERT INTO admin_invites (token, role) VALUES ($1, $2)", token, role)
+	if err != nil {
+		return "", fmt.Errorf("failed to insert invite: %w", err)
+	}
+
+	details := fmt.Sprintf("Generated invite for role %s", role)
+	_, _ = r.pool.Exec(ctx, "INSERT INTO admin_logs (admin_id, action, details) VALUES ($1, 'generate_invite', $2)", adminID, details)
+
+	return token, nil
+}
+
+func (r *userRepository) AcceptAdminInvite(ctx context.Context, token string, tgID int64) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	var inviteID int
+	var role string
+	err = tx.QueryRow(ctx, "SELECT id, role FROM admin_invites WHERE token = $1 AND is_used = FALSE FOR UPDATE", token).Scan(&inviteID, &role)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return fmt.Errorf("invalid or used token")
+		}
+		return fmt.Errorf("failed to query invite: %w", err)
+	}
+
+	_, err = tx.Exec(ctx, "UPDATE admin_invites SET is_used = TRUE WHERE id = $1", inviteID)
+	if err != nil {
+		return fmt.Errorf("failed to update invite: %w", err)
+	}
+
+	var exists bool
+	err = tx.QueryRow(ctx, "SELECT TRUE FROM users WHERE tg_id = $1", tgID).Scan(&exists)
+	if err != nil && err != pgx.ErrNoRows {
+		return fmt.Errorf("failed to check existing user: %w", err)
+	}
+
+	if !exists {
+		query := `
+			INSERT INTO users (tg_id, username, role, balance, energy, max_energy, passive_income, is_hidden, is_anonymous_tips)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		`
+		_, err = tx.Exec(ctx, query,
+			tgID, "invited_admin", role, 0, 1000, 1000, 0, false, false)
+		if err != nil {
+			return fmt.Errorf("insert user exec error: %w", err)
+		}
+	} else {
+		_, err = tx.Exec(ctx, "UPDATE users SET role = $1 WHERE tg_id = $2", role, tgID)
+		if err != nil {
+			return fmt.Errorf("failed to update user role: %w", err)
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (r *userRepository) BanUser(ctx context.Context, tgID int64, isBanned bool, reason string) error {
+	var reasonPtr *string
+	if isBanned && reason != "" {
+		reasonPtr = &reason
+	}
+	_, err := r.pool.Exec(ctx, "UPDATE users SET is_banned = $1, ban_reason = $2 WHERE tg_id = $3", isBanned, reasonPtr, tgID)
+	return err
 }

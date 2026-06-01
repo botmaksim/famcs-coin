@@ -43,3 +43,45 @@ func RoleMiddleware(userRepo repository.UserRepository, requiredRole string) fun
 		})
 	}
 }
+
+// RequirePermission checks if the user has a specific permission
+// superadmin automatically has all permissions
+func RequirePermission(userRepo repository.UserRepository, requiredPerm string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctxValue := r.Context().Value(UserIDKey)
+			if ctxValue == nil {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			tgID := ctxValue.(int64)
+
+			user, err := userRepo.GetUserByID(r.Context(), tgID)
+			if err != nil || user == nil {
+				http.Error(w, "User not found", http.StatusUnauthorized)
+				return
+			}
+
+			if user.Role == "superadmin" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if user.Role == "admin" {
+				hasPerm := false
+				for _, p := range user.Permissions {
+					if p == requiredPerm {
+						hasPerm = true
+						break
+					}
+				}
+				if hasPerm {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+		})
+	}
+}

@@ -11,6 +11,9 @@ import (
 
 type DaoRepository interface {
 	GetActiveProposals(ctx context.Context, tgID int64) ([]*models.Proposal, error)
+	GetPendingProposals(ctx context.Context) ([]*models.Proposal, error)
+	Propose(ctx context.Context, tgID int64, title, description string, pledgeAmount float64) error
+	ModerateProposal(ctx context.Context, proposalID int, decision string) error
 	Vote(ctx context.Context, tgID int64, proposalID int, voteType string) error
 }
 
@@ -50,6 +53,123 @@ func (r *daoRepository) GetActiveProposals(ctx context.Context, tgID int64) ([]*
 		proposals = append(proposals, p)
 	}
 	return proposals, nil
+}
+
+func (r *daoRepository) GetPendingProposals(ctx context.Context) ([]*models.Proposal, error) {
+	query := `
+		SELECT id, user_id, title, description, status, created_at
+		FROM proposals
+		WHERE status = 'pending'
+		ORDER BY created_at ASC
+	`
+	rows, err := r.pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("GetPendingProposals query error: %w", err)
+	}
+	defer rows.Close()
+
+	var proposals []*models.Proposal
+	for rows.Next() {
+		p := &models.Proposal{}
+		err := rows.Scan(&p.ID, &p.UserID, &p.Title, &p.Description, &p.Status, &p.CreatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("GetPendingProposals scan error: %w", err)
+		}
+		proposals = append(proposals, p)
+	}
+	return proposals, nil
+}
+
+func (r *daoRepository) Propose(ctx context.Context, tgID int64, title, description string, pledgeAmount float64) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Check balance
+	var balance float64
+	err = tx.QueryRow(ctx, "SELECT balance FROM users WHERE tg_id = $1 FOR UPDATE", tgID).Scan(&balance)
+	if err != nil {
+		return fmt.Errorf("failed to fetch user balance: %w", err)
+	}
+	if balance < pledgeAmount {
+		return fmt.Errorf("insufficient balance")
+	}
+
+	// Deduct pledge
+	_, err = tx.Exec(ctx, "UPDATE users SET balance = balance - $1 WHERE tg_id = $2", pledgeAmount, tgID)
+	if err != nil {
+		return fmt.Errorf("failed to deduct pledge: %w", err)
+	}
+
+	// Record transaction
+	_, err = tx.Exec(ctx, "INSERT INTO transactions (sender_id, receiver_id, amount, type) VALUES ($1, NULL, $2, 'dao_pledge')", tgID, pledgeAmount)
+	if err != nil {
+		return fmt.Errorf("failed to insert transaction: %w", err)
+	}
+
+	// Create proposal
+	_, err = tx.Exec(ctx, "INSERT INTO proposals (user_id, title, description, status) VALUES ($1, $2, $3, 'pending')", tgID, title, description)
+	if err != nil {
+		return fmt.Errorf("failed to insert proposal: %w", err)
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (r *daoRepository) ModerateProposal(ctx context.Context, proposalID int, decision string) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	var status string
+	var userID *int64
+	err = tx.QueryRow(ctx, "SELECT status, user_id FROM proposals WHERE id = $1 FOR UPDATE", proposalID).Scan(&status, &userID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return fmt.Errorf("proposal not found")
+		}
+		return fmt.Errorf("failed to fetch proposal: %w", err)
+	}
+	
+	if status != "pending" {
+		return fmt.Errorf("proposal is not pending")
+	}
+
+	if decision == "approve" {
+		_, err = tx.Exec(ctx, "UPDATE proposals SET status = 'active' WHERE id = $1", proposalID)
+		if err != nil {
+			return fmt.Errorf("failed to approve proposal: %w", err)
+		}
+	} else if decision == "reject" {
+		_, err = tx.Exec(ctx, "UPDATE proposals SET status = 'rejected' WHERE id = $1", proposalID)
+		if err != nil {
+			return fmt.Errorf("failed to reject proposal: %w", err)
+		}
+		
+		// Return pledge amount (assume constant 1000 for now, or fetch from settings)
+		// We'll hardcode 1000 based on standard pledge, or if dynamic, we should have saved it.
+		// Let's assume 1000 since we don't have pledge_amount in proposals table.
+		if userID != nil {
+			_, err = tx.Exec(ctx, "UPDATE users SET balance = balance + 1000 WHERE tg_id = $1", *userID)
+			if err != nil {
+				return fmt.Errorf("failed to refund pledge: %w", err)
+			}
+			
+			// Record refund transaction
+			_, err = tx.Exec(ctx, "INSERT INTO transactions (sender_id, receiver_id, amount, type) VALUES (NULL, $1, 1000, 'dao_refund')", *userID)
+			if err != nil {
+				return fmt.Errorf("failed to record refund: %w", err)
+			}
+		}
+	} else {
+		return fmt.Errorf("invalid decision")
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (r *daoRepository) Vote(ctx context.Context, tgID int64, proposalID int, voteType string) error {

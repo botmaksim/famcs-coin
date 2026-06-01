@@ -6,23 +6,47 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"famcscoin-backend/internal/repository"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type contextKey string
 
-const UserIDKey contextKey = "user_id"
+const (
+	UserIDKey contextKey = "user_id"
+	RoleKey   contextKey = "role"
+)
 
 // validateInitData validates the Telegram WebApp initData string
 func validateInitData(initData, botToken string) (bool, int64) {
 	// Dev backdoor for local testing without real Telegram environment
 	if initData == "test_dev_token" {
 		return true, 1
+	}
+
+	// Web Admin simple authentication using ADMIN_PANEL_PASSWORD
+	if strings.HasPrefix(initData, "web:") {
+		parts := strings.Split(initData, ":")
+		if len(parts) == 3 {
+			tgIDStr := parts[1]
+			password := parts[2]
+			expectedPassword := os.Getenv("ADMIN_PANEL_PASSWORD")
+			if expectedPassword != "" && password == expectedPassword {
+				tgID, err := strconv.ParseInt(tgIDStr, 10, 64)
+				if err == nil {
+					return true, tgID
+				}
+			}
+		}
 	}
 
 	parsedArgs, err := url.ParseQuery(initData)
@@ -92,25 +116,109 @@ func validateInitData(initData, botToken string) (bool, int64) {
 	return true, tgUser.ID
 }
 
-// TelegramAuthMiddleware checks the Authorization header
-func TelegramAuthMiddleware(botToken string) func(http.Handler) http.Handler {
+// TMAAuthMiddleware checks ONLY the 'tma' Authorization header
+func TMAAuthMiddleware(botToken string, userRepo repository.UserRepository) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-				http.Error(w, "Unauthorized: Missing or invalid token", http.StatusUnauthorized)
+			if authHeader == "" || !strings.HasPrefix(authHeader, "tma ") {
+				http.Error(w, "Unauthorized: Missing or invalid TMA header", http.StatusUnauthorized)
 				return
 			}
 
-			initData := strings.TrimPrefix(authHeader, "Bearer ")
-			
+			initData := strings.TrimPrefix(authHeader, "tma ")
 			isValid, userID := validateInitData(initData, botToken)
 			if !isValid || userID == 0 {
-				http.Error(w, "Unauthorized: Invalid Telegram hash", http.StatusUnauthorized)
+				http.Error(w, "Unauthorized: Invalid TMA hash", http.StatusUnauthorized)
+				return
+			}
+
+			user, err := userRepo.GetUserByID(r.Context(), userID)
+			if err != nil || user == nil {
+				// If user does not exist yet (e.g. initial login), we can let it pass, but role is user
+				ctx := context.WithValue(r.Context(), UserIDKey, userID)
+				ctx = context.WithValue(ctx, RoleKey, "user")
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+
+			if user.IsBanned {
+				reason := "Ваш аккаунт заблокирован"
+				if user.BanReason != nil && *user.BanReason != "" {
+					reason += ": " + *user.BanReason
+				}
+				http.Error(w, reason, http.StatusForbidden)
 				return
 			}
 
 			ctx := context.WithValue(r.Context(), UserIDKey, userID)
+			ctx = context.WithValue(ctx, RoleKey, user.Role)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// WebAuthMiddleware checks ONLY the 'Bearer' Authorization header
+func WebAuthMiddleware(botToken string, userRepo repository.UserRepository) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+				http.Error(w, "Unauthorized: Missing or invalid Bearer header", http.StatusUnauthorized)
+				return
+			}
+
+			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+			var parsedUserID int64
+
+			// Try JWT
+			token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("unexpected signing method")
+				}
+				return []byte(botToken), nil
+			})
+
+			if err == nil && token.Valid {
+				if claims, ok := token.Claims.(jwt.MapClaims); ok {
+					if userIDFloat, ok := claims["user_id"].(float64); ok {
+						parsedUserID = int64(userIDFloat)
+					}
+				}
+			}
+
+			// Try Web Admin Password as fallback (web:tg_id:password)
+			if parsedUserID == 0 {
+				isValid, id := validateInitData(tokenStr, botToken)
+				if isValid && id != 0 {
+					parsedUserID = id
+				}
+			}
+
+			if parsedUserID == 0 {
+				http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
+				return
+			}
+
+			user, err := userRepo.GetUserByID(r.Context(), parsedUserID)
+			if err != nil || user == nil {
+				ctx := context.WithValue(r.Context(), UserIDKey, parsedUserID)
+				ctx = context.WithValue(ctx, RoleKey, "user")
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+
+			if user.IsBanned {
+				reason := "Ваш аккаунт заблокирован"
+				if user.BanReason != nil && *user.BanReason != "" {
+					reason += ": " + *user.BanReason
+				}
+				http.Error(w, reason, http.StatusForbidden)
+				return
+			}
+
+			ctx := context.WithValue(r.Context(), UserIDKey, parsedUserID)
+			ctx = context.WithValue(ctx, RoleKey, user.Role)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
