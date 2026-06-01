@@ -28,93 +28,80 @@ const WebLeaderboard = () => {
   }, []);
 
   return (
-    <div style={{ fontFamily: 'var(--font-family)', color: 'var(--text-color)' }}>
-      <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-        <h1 style={{ fontSize: '48px', textAlign: 'center', marginBottom: '40px', textShadow: '0 0 20px rgba(59, 130, 246, 0.5)' }}>Глобальные Рейтинги</h1>
+    <div className="font-sans text-slate-800">
+      <div className="py-10 px-5 max-w-[1200px] mx-auto">
+        <h1 className="text-5xl uppercase tracking-[2px] text-center mb-10 text-slate-900 font-bold">
+          Глобальные <span className="text-blue-600">Рейтинги</span>
+        </h1>
 
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '40px' }}>
+        <div className="flex justify-center gap-5 mb-10">
           <button
             onClick={() => setActiveTab('players')}
-            style={{
-              padding: '12px 30px',
-              borderRadius: '30px',
-              border: 'none',
-              backgroundColor: activeTab === 'players' ? 'var(--accent-color)' : 'var(--secondary-bg)',
-              color: activeTab === 'players' ? '#fff' : 'var(--text-color)',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              boxShadow: activeTab === 'players' ? '0 5px 15px rgba(59, 130, 246, 0.4)' : 'none'
-            }}
+            className={`px-8 py-3 rounded-full border border-solid text-lg font-bold cursor-pointer transition-all duration-200 ${
+              activeTab === 'players' 
+                ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-sm' 
+                : 'border-transparent bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
           >
             Игроки
           </button>
           <button
             onClick={() => setActiveTab('squads')}
-            style={{
-              padding: '12px 30px',
-              borderRadius: '30px',
-              border: 'none',
-              backgroundColor: activeTab === 'squads' ? 'var(--accent-color)' : 'var(--secondary-bg)',
-              color: activeTab === 'squads' ? '#fff' : 'var(--text-color)',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              boxShadow: activeTab === 'squads' ? '0 5px 15px rgba(59, 130, 246, 0.4)' : 'none'
-            }}
+            className={`px-8 py-3 rounded-full border border-solid text-lg font-bold cursor-pointer transition-all duration-200 ${
+              activeTab === 'squads' 
+                ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-sm' 
+                : 'border-transparent bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
           >
             Сквады
           </button>
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', fontSize: '20px', color: '#94a3b8' }}>Загрузка данных...</div>
+          <div className="text-center text-xl text-slate-400">Загрузка данных...</div>
         ) : (
-          <div style={{ backgroundColor: 'var(--card-bg)', borderRadius: '16px', border: '1px solid var(--glass-border)', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+            <table className="w-full border-collapse text-left">
               <thead>
-                <tr style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--glass-border)' }}>
-                  <th style={{ padding: '20px', width: '80px', textAlign: 'center' }}>Ранг</th>
-                  <th style={{ padding: '20px' }}>{activeTab === 'players' ? 'Студент' : 'Название сквада'}</th>
-                  <th style={{ padding: '20px', textAlign: 'right' }}>{activeTab === 'players' ? 'Баланс' : 'Общие очки'}</th>
-                  {activeTab === 'players' && <th style={{ padding: '20px', textAlign: 'right', display: 'none' }}>Пассивный доход</th>}
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="p-5 w-20 text-center font-bold text-slate-600">Ранг</th>
+                  <th className="p-5 font-bold text-slate-600">{activeTab === 'players' ? 'Студент' : 'Название сквада'}</th>
+                  <th className="p-5 text-right font-bold text-slate-600">{activeTab === 'players' ? 'Баланс' : 'Общие очки'}</th>
                 </tr>
               </thead>
               <tbody>
                 {(activeTab === 'players' ? players : squads).map((item, index) => (
-                  <tr key={index} style={{ borderBottom: '1px solid var(--glass-border)', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                    <td style={{ padding: '20px', textAlign: 'center', fontSize: '20px', fontWeight: 'bold', color: index < 3 ? 'var(--accent-color)' : '#94a3b8' }}>
+                  <tr key={index} className="border-b border-slate-200 transition-colors hover:bg-slate-50">
+                    <td className={`p-5 text-center text-xl font-bold ${index < 3 ? 'text-blue-600' : 'text-slate-400'}`}>
                       #{index + 1}
                     </td>
-                    <td style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <td className="p-5 flex items-center gap-4">
                       {activeTab === 'players' && (
-                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--secondary-bg)', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+                        <div className="w-10 h-10 rounded-full bg-slate-100 flex justify-center items-center overflow-hidden border border-slate-200">
                           {item.avatar_url ? (
-                            <img src={item.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img src={item.avatar_url} alt="avatar" className="w-full h-full object-cover" />
                           ) : (
-                            <span style={{ fontSize: '20px' }}>🕵️</span>
+                            <span className="text-xl">🕵️</span>
                           )}
                         </div>
                       )}
                       <div>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
+                        <div className="text-lg font-bold text-slate-800">
                           {activeTab === 'players' ? (item.custom_name || item.username) : item.name}
                         </div>
                         {activeTab === 'players' && item.is_hidden && (
-                          <div style={{ fontSize: '12px', color: '#94a3b8' }}>Скрытый профиль</div>
+                          <div className="text-xs text-slate-400">Скрытый профиль</div>
                         )}
                       </div>
                     </td>
-                    <td style={{ padding: '20px', textAlign: 'right', fontSize: '18px', fontWeight: 'bold', color: '#10b981' }}>
+                    <td className="p-5 text-right text-lg font-bold text-blue-600">
                       {Math.floor(activeTab === 'players' ? item.balance : item.total_points).toLocaleString()} FAMCS
                     </td>
                   </tr>
                 ))}
                 {(activeTab === 'players' ? players : squads).length === 0 && (
                   <tr>
-                    <td colSpan="3" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>Нет данных</td>
+                    <td colSpan="3" className="p-10 text-center text-slate-400">Нет данных</td>
                   </tr>
                 )}
               </tbody>

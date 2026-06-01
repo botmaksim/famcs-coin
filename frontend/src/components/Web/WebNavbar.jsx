@@ -7,24 +7,27 @@ const WebNavbar = () => {
   const { user } = useUser();
 
   return (
-    <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 30px', backgroundColor: 'var(--card-bg)', borderBottom: '1px solid var(--glass-border)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 1000 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-        <Link to="/" style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--accent-color)', textDecoration: 'none' }}>FAMCS Coin</Link>
+    <nav className="flex justify-between items-center px-10 py-5 bg-white border-b border-slate-200 sticky top-0 z-[1000] shadow-sm">
+      <div className="flex items-center gap-5">
+        <div className="w-1 h-6 bg-blue-600"></div>
+        <Link to="/" className="text-xl font-bold text-slate-800 no-underline tracking-wide hover:opacity-80 transition-opacity">FAMCS</Link>
       </div>
-      <div style={{ display: 'flex', gap: '20px' }}>
-        <Link to="/info" style={{ color: 'white', textDecoration: 'none' }}>Info</Link>
-        <Link to="/leaderboard" style={{ color: 'white', textDecoration: 'none' }}>Leaderboard</Link>
-        <Link to="/hall-of-fame" style={{ color: 'white', textDecoration: 'none' }}>Hall of Fame</Link>
-        <Link to="/dao" style={{ color: 'white', textDecoration: 'none' }}>DAO</Link>
+      <div className="flex gap-7">
+        <Link to="/info" className="text-slate-600 hover:text-blue-600 font-medium transition-colors">Info</Link>
+        <Link to="/leaderboard" className="text-slate-600 hover:text-blue-600 font-medium transition-colors">Leaderboard</Link>
+        <Link to="/hall-of-fame" className="text-slate-600 hover:text-blue-600 font-medium transition-colors">Hall of Fame</Link>
+        <Link to="/dao" className="text-slate-600 hover:text-blue-600 font-medium transition-colors">DAO</Link>
       </div>
       <div>
         {user?.tg_id ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <span style={{ color: 'white' }}>{user.username || 'User'}</span>
-            <Link to="/admin-panel" style={{ padding: '8px 16px', backgroundColor: 'var(--accent-color)', color: 'black', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold' }}>Панель</Link>
+          <div className="flex items-center gap-5">
+            <span className="text-slate-800 font-medium">{user.username || 'User'}</span>
+            {(user.role === 'admin' || user.role === 'superadmin') && (
+              <Link to="/admin-panel" className="px-5 py-2 bg-slate-800 text-white rounded font-bold hover:bg-slate-700 transition-colors">PANEL</Link>
+            )}
           </div>
         ) : (
-          <div style={{ transform: 'scale(0.8)', transformOrigin: 'right center' }}>
+          <div className="scale-90 origin-right">
             <TelegramLoginWidget />
           </div>
         )}

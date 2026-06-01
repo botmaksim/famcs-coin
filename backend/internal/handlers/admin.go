@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"famcscoin-backend/internal/config"
+	"famcscoin-backend/internal/hub"
 	"famcscoin-backend/internal/middleware"
 	"famcscoin-backend/internal/repository"
 )
@@ -138,6 +140,11 @@ func (h *AdminHandler) ResolveBet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hub.Broadcast("bet_resolved", map[string]interface{}{
+		"event_id":       req.EventID,
+		"winning_option": req.WinningOption,
+	})
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
@@ -223,6 +230,53 @@ type banRequest struct {
 	TgID     int64  `json:"tg_id"`
 	Reason   string `json:"reason"`
 	IsBanned bool   `json:"is_banned"`
+}
+
+func (h *AdminHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	settings := config.GlobalSettings.GetAll()
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"settings": settings,
+	})
+}
+
+type UpdateSettingRequest struct {
+	Key   string `json:"key"`
+	Value string `json:"value"` // Stored as a simple string logic for easy update
+}
+
+func (h *AdminHandler) UpdateSetting(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req UpdateSettingRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	err := h.userRepo.UpdateGameSetting(r.Context(), req.Key, req.Value)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	// Fast reload setting
+	_ = config.GlobalSettings.Reload(r.Context(), h.userRepo.Pool())
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+	})
 }
 
 func (h *AdminHandler) BanUser(w http.ResponseWriter, r *http.Request) {

@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS quizzes (
+CREATE TABLE IF NOT EXISTS IF NOT EXISTS quizzes (
     id SERIAL PRIMARY KEY,
     active_date DATE UNIQUE NOT NULL,
     question TEXT NOT NULL,
@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS quizzes (
     reward INT NOT NULL DEFAULT 100000
 );
 
-CREATE TABLE IF NOT EXISTS user_quizzes (
+CREATE TABLE IF NOT EXISTS IF NOT EXISTS user_quizzes (
     user_id BIGINT REFERENCES users(tg_id) ON DELETE CASCADE,
     quiz_date DATE NOT NULL,
     is_correct BOOLEAN NOT NULL,

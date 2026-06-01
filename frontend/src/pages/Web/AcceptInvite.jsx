@@ -41,11 +41,11 @@ const AcceptInvite = () => {
   if (status === 'success') {
     return (
       <div style={{ padding: '50px 20px', textAlign: 'center', minHeight: '100vh', backgroundColor: 'var(--bg-color)', color: 'var(--text-color)', fontFamily: 'sans-serif' }}>
-        <h2 style={{ color: '#10b981' }}>✅ Приглашение принято!</h2>
+        <h2 style={{ color: 'var(--accent-color)', textShadow: '0 0 15px rgba(163, 230, 53, 0.5)' }}>✅ Приглашение принято!</h2>
         <p>Ваша роль была успешно обновлена.</p>
         <button onClick={() => navigate('/admin-panel')} style={{
           marginTop: '20px', padding: '12px 24px', borderRadius: '8px', border: 'none',
-          backgroundColor: 'var(--accent-color)', color: '#fff', fontWeight: 'bold', cursor: 'pointer'
+          backgroundColor: 'var(--accent-color)', color: '#000', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 15px rgba(163, 230, 53, 0.3)'
         }}>
           Перейти в Панель управления
         </button>
@@ -90,9 +90,9 @@ const AcceptInvite = () => {
           disabled={loading}
           style={{
             padding: '12px', borderRadius: '8px', border: 'none',
-            backgroundColor: 'var(--accent-color)', color: '#fff',
+            backgroundColor: 'var(--accent-color)', color: '#000',
             fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer',
-            opacity: loading ? 0.7 : 1, fontSize: '16px'
+            opacity: loading ? 0.7 : 1, fontSize: '16px', boxShadow: '0 0 15px rgba(163, 230, 53, 0.3)'
           }}
         >
           {loading ? 'Обработка...' : 'Подтвердить'}

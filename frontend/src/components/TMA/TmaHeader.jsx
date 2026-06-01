@@ -15,7 +15,7 @@ const TmaHeader = () => {
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold', color: 'var(--accent-color)', fontSize: '16px' }}>
-        🪙 {user?.balance || 0}
+        <img src="/icons/coin.png" alt="coin" style={{ width: '20px', height: '20px' }} /> {user?.balance ? user.balance.toFixed(0) : 0}
       </div>
     </div>
   );

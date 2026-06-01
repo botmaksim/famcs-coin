@@ -64,6 +64,20 @@ func (c *SettingsCache) LoadFromDB(ctx context.Context, pool *pgxpool.Pool) erro
 	return nil
 }
 
+func (c *SettingsCache) GetAll() map[string]interface{} {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	res := make(map[string]interface{})
+	for k, v := range c.settings {
+		res[k] = v
+	}
+	return res
+}
+
+func (c *SettingsCache) Reload(ctx context.Context, pool *pgxpool.Pool) error {
+	return c.LoadFromDB(ctx, pool)
+}
+
 // GetInt returns a setting as an integer. Returns the fallback if missing or invalid type.
 func (c *SettingsCache) GetInt(key string, fallback int) int {
 	c.mu.RLock()
@@ -79,4 +93,20 @@ func (c *SettingsCache) GetInt(key string, fallback int) int {
 		return int(vFloat)
 	}
 	return fallback
+}
+
+// GetString returns a setting as a string. Returns the fallback if missing or invalid type.
+func (c *SettingsCache) GetString(key string) (string, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	val, exists := c.settings[key]
+	if !exists {
+		return "", false
+	}
+
+	if vStr, ok := val.(string); ok {
+		return vStr, true
+	}
+	return fmt.Sprintf("%v", val), true
 }

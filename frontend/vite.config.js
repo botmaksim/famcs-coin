@@ -1,14 +1,15 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   server: {
     host: true, 
     port: 5176,
     cors: true,
     hmr: {
-      clientPort: 443 // Заставляем веб-сокеты идти через HTTPS-туннель
+      clientPort: 443 
     },
     proxy: {
       '/api': 'http://127.0.0.1:8083' 

@@ -3,17 +3,23 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"sync"
+	"time"
 
 	"famcscoin-backend/internal/middleware"
 	"famcscoin-backend/internal/repository"
 )
 
 type ClickerHandler struct {
-	userRepo repository.UserRepository
+	userRepo   repository.UserRepository
+	clickStats sync.Map // map[int64]time.Time
 }
 
 func NewClickerHandler(userRepo repository.UserRepository) *ClickerHandler {
-	return &ClickerHandler{userRepo: userRepo}
+	return &ClickerHandler{
+		userRepo:   userRepo,
+		clickStats: sync.Map{},
+	}
 }
 
 type clickRequest struct {
@@ -44,6 +50,24 @@ func (h *ClickerHandler) Click(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid count", http.StatusBadRequest)
 		return
 	}
+
+	// Rate-limit / velocity check
+	now := time.Now()
+	if lastClickVal, ok := h.clickStats.Load(tgID); ok {
+		lastTime := lastClickVal.(time.Time)
+		elapsed := now.Sub(lastTime).Seconds()
+		// Максимально допустимая скорость кликов, например 15-20 кликов в секунду, добавим буфер
+		maxAllowedClicks := int(elapsed * 20.0)
+		if maxAllowedClicks < 5 { // Минимальный порог, чтобы не блокировать короткие спайки
+			maxAllowedClicks = 5
+		}
+		
+		if req.Count > maxAllowedClicks {
+			http.Error(w, "Abuse detected: click rate too high", http.StatusTooManyRequests)
+			return
+		}
+	}
+	h.clickStats.Store(tgID, now)
 
 	// TODO: Здесь должна быть более хитрая логика с energy и FOR UPDATE для кликов,
 	// но для простоты обновляем баланс, если юзер найден. В идеале вызывать метод из Repo с логикой Energy.

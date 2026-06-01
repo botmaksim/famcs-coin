@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"famcscoin-backend/internal/hub"
 	"famcscoin-backend/internal/middleware"
 	"famcscoin-backend/internal/repository"
 )
@@ -71,6 +72,12 @@ func (h *BetHandler) PlaceBet(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	hub.Broadcast("bet_placed", map[string]interface{}{
+		"event_id": req.EventID,
+		"amount":   req.Amount,
+		"option":   req.ChosenOption,
+	})
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{

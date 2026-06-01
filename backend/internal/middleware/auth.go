@@ -28,11 +28,6 @@ const (
 
 // validateInitData validates the Telegram WebApp initData string
 func validateInitData(initData, botToken string) (bool, int64) {
-	// Dev backdoor for local testing without real Telegram environment
-	if initData == "test_dev_token" {
-		return true, 1
-	}
-
 	// Web Admin simple authentication using ADMIN_PANEL_PASSWORD
 	if strings.HasPrefix(initData, "web:") {
 		parts := strings.Split(initData, ":")
@@ -116,13 +111,17 @@ func validateInitData(initData, botToken string) (bool, int64) {
 	return true, tgUser.ID
 }
 
-// TMAAuthMiddleware checks ONLY the 'tma' Authorization header
+// TMAAuthMiddleware checks 'tma' Authorization header, and falls back to JWT/Web token if present
 func TMAAuthMiddleware(botToken string, userRepo repository.UserRepository) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
+			
+			// If missing or starts with Bearer, fallback to WebAuth logic
 			if authHeader == "" || !strings.HasPrefix(authHeader, "tma ") {
-				http.Error(w, "Unauthorized: Missing or invalid TMA header", http.StatusUnauthorized)
+				// We call WebAuthMiddleware logic directly or let we delegate
+				webAuthFunc := WebAuthMiddleware(botToken, userRepo)(next)
+				webAuthFunc.ServeHTTP(w, r)
 				return
 			}
 

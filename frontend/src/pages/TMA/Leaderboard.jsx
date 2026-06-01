@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import apiClient from '../../api/client';
 import { useUser } from '../../context/UserContext';
+import { Skeleton } from '../../components/Skeleton';
 
 const Leaderboard = () => {
   const { user, fetchProfile } = useUser();
@@ -37,27 +39,27 @@ const Leaderboard = () => {
   const handleJoinSquad = async (squadId) => {
     try {
       await apiClient.post('/squads/join', { squad_id: squadId });
-      alert('Вы успешно вступили в группу!');
+      toast.success('Вы успешно вступили в группу!');
       await fetchProfile(); // Обновляем профиль (чтобы squad_id подтянулся)
     } catch (err) {
-      alert('Ошибка при вступлении в группу');
+      toast.error('Ошибка при вступлении в группу');
     }
   };
 
   const handleCreateSquad = async () => {
-    const name = prompt('Введите название новой группы (Стоимость: 50000 🪙):');
+    const name = prompt('Введите название новой группы (Стоимость: 50000  <img src="/icons/coin.png" alt="coin" className="inline-block w-4 h-4 ml-1 align-middle" />):');
     if (!name || name.trim() === '') return;
 
     try {
       await apiClient.post('/squads/create', { name: name.trim() });
-      alert('Группа успешно создана!');
+      toast.success('Группа успешно создана!');
       await fetchProfile();
       // Перезагружаем список групп
       const res = await apiClient.get('/squads');
       setSquads(res.data.squads || []);
     } catch (err) {
-      const msg = err.response?.data || 'Ошибка при создании группы. Возможно, недостаточно средств или имя занято.';
-      alert(msg);
+      const msg = err.response?.data || 'Ошибка при создании группы.';
+      toast.error(msg);
     }
   };
 
@@ -69,117 +71,88 @@ const Leaderboard = () => {
 
     try {
       await apiClient.post('/squads/donate', { amount });
-      alert('Пожертвование успешно!');
+      toast.success('Пожертвование успешно!');
       await fetchProfile();
       const res = await apiClient.get('/squads');
       setSquads(res.data.squads || []);
     } catch (err) {
-      alert(err.response?.data || 'Ошибка при пожертвовании. Возможно, недостаточно средств.');
+      toast.error(err.response?.data || 'Ошибка при пожертвовании. Возможно, недостаточно средств.');
     }
   };
 
   const handleBoost = async (squadId) => {
     try {
       await apiClient.post('/squads/boost');
-      alert('Буст x2 успешно активирован на 24 часа!');
+      toast.success('Буст x2 успешно активирован на 24 часа!');
       await fetchProfile();
       const res = await apiClient.get('/squads');
       setSquads(res.data.squads || []);
     } catch (err) {
-      alert(err.response?.data || 'Ошибка при активации буста.');
+      toast.error(err.response?.data || 'Ошибка при активации буста.');
     }
   };
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif', paddingBottom: '80px' }}>
-      <h2 style={{ textAlign: 'center' }}>Рейтинги</h2>
+    <div className="p-5 font-sans pb-20">
+      <h2 className="text-center">Рейтинги</h2>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px', gap: '10px' }}>
+      <div className="flex justify-center mb-5 gap-2.5">
         <button 
           onClick={() => setActiveTab('users')}
-          style={{
-            padding: '10px 20px',
-            border: 'none',
-            borderRadius: '20px',
-            backgroundColor: activeTab === 'users' ? 'var(--tg-theme-button-color, #2481cc)' : 'transparent',
-            color: activeTab === 'users' ? 'var(--tg-theme-button-text-color, #fff)' : 'var(--tg-theme-text-color, #000)',
-            cursor: 'pointer',
-            fontWeight: 'bold'
-          }}
+          className={`px-5 py-2.5 rounded-full font-bold cursor-pointer transition-colors border ${activeTab === 'users' ? 'border-blue-600 bg-[rgba(163,230,53,0.1)] text-blue-600' : 'border-transparent bg-transparent text-slate-800'}`}
         >
           Студенты
         </button>
         <button 
           onClick={() => setActiveTab('squads')}
-          style={{
-            padding: '10px 20px',
-            border: 'none',
-            borderRadius: '20px',
-            backgroundColor: activeTab === 'squads' ? 'var(--tg-theme-button-color, #2481cc)' : 'transparent',
-            color: activeTab === 'squads' ? 'var(--tg-theme-button-text-color, #fff)' : 'var(--tg-theme-text-color, #000)',
-            cursor: 'pointer',
-            fontWeight: 'bold'
-          }}
+          className={`px-5 py-2.5 rounded-full font-bold cursor-pointer transition-colors border ${activeTab === 'squads' ? 'border-blue-600 bg-[rgba(163,230,53,0.1)] text-blue-600' : 'border-transparent bg-transparent text-slate-800'}`}
         >
           Группы
         </button>
       </div>
 
-      {loading && <div style={{ textAlign: 'center' }}>Загрузка...</div>}
-      {error && <div style={{ textAlign: 'center', color: 'red' }}>{error}</div>}
+      {loading && (
+        <div className="flex flex-col gap-2.5">
+          {[1,2,3,4,5].map(i => (
+             <Skeleton key={i} className="h-16 rounded-xl w-full" />
+          ))}
+        </div>
+      )}
+      {error && <div className="text-center text-red-500">{error}</div>}
 
       {/* Users List */}
       {!loading && !error && activeTab === 'users' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div className="flex flex-col gap-2.5">
           {users.map((u, index) => (
-            <div key={u.tg_id} style={{
-              display: 'flex', justifyContent: 'space-between', padding: '15px', 
-              backgroundColor: 'var(--tg-theme-secondary-bg-color, #f5f5f5)',
-              borderRadius: '10px',
-              alignItems: 'center'
-            }}>
+            <div key={u.tg_id} className="flex justify-between items-center p-4 bg-[rgba(18,18,18,0.75)] border border-[rgba(255,255,255,0.05)] rounded-xl shadow-[0_4px_6px_rgba(0,0,0,0.3)]">
               <div>
-                <strong>#{index + 1}</strong> <span style={{marginLeft: '10px'}}>{u.custom_name || u.username || 'Аноним'}</span>
+                <strong>#{index + 1}</strong> <span className="ml-2.5">{u.custom_name || u.username || 'Аноним'}</span>
               </div>
-              <div style={{ fontWeight: 'bold', color: 'var(--tg-theme-hint-color, #999)' }}>
-                {u.balance.toFixed(0)} 🪙
+              <div className="font-bold text-slate-600">
+                {u.balance.toFixed(0)}  <img src="/icons/coin.png" alt="coin" className="inline-block w-4 h-4 ml-1 align-middle" />
               </div>
             </div>
           ))}
-          {users.length === 0 && <div style={{ textAlign: 'center' }}>Пусто</div>}
+          {users.length === 0 && <div className="text-center">Пусто</div>}
         </div>
       )}
 
       {/* Squads List */}
       {!loading && !error && activeTab === 'squads' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div className="flex flex-col gap-2.5">
           <button 
             onClick={handleCreateSquad}
-            style={{
-              padding: '12px',
-              borderRadius: '10px',
-              border: '2px dashed var(--tg-theme-button-color, #2481cc)',
-              backgroundColor: 'transparent',
-              color: 'var(--tg-theme-button-color, #2481cc)',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              marginBottom: '10px'
-            }}
+            className="p-3 rounded-xl border-2 border-dashed border-blue-600 bg-transparent text-blue-600 font-bold cursor-pointer mb-2.5"
           >
-            + Создать группу (50000 🪙)
+            + Создать группу (50000  <img src="/icons/coin.png" alt="coin" className="inline-block w-4 h-4 ml-1 align-middle" />)
           </button>
           
           {squads.map((s, index) => (
-            <div key={s.id} style={{
-              display: 'flex', justifyContent: 'space-between', padding: '15px', 
-              backgroundColor: 'var(--tg-theme-secondary-bg-color, #f5f5f5)',
-              borderRadius: '10px',
-              alignItems: 'center'
-            }}>
+            <div key={s.id} className="flex justify-between items-center p-4 bg-[rgba(18,18,18,0.75)] border border-[rgba(255,255,255,0.05)] rounded-xl shadow-[0_4px_6px_rgba(0,0,0,0.3)]">
               <div>
-                <strong>#{index + 1}</strong> <span style={{marginLeft: '10px'}}>{s.name}</span>
-                <div style={{ fontSize: '12px', color: 'var(--tg-theme-hint-color, #999)', marginTop: '4px' }}>
+                <strong>#{index + 1}</strong> <span className="ml-2.5">{s.name}</span>
+                <div className="text-xs text-slate-600 mt-1">
                   Счет: {s.total_points.toFixed(0)}
                 </div>
               </div>
@@ -187,59 +160,38 @@ const Leaderboard = () => {
               {user.squad_id !== s.id ? (
                 <button 
                   onClick={() => handleJoinSquad(s.id)}
-                  style={{
-                    padding: '8px 15px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    backgroundColor: 'var(--tg-theme-button-color, #2481cc)',
-                    color: 'var(--tg-theme-button-text-color, #fff)',
-                    cursor: 'pointer'
-                  }}
+                  className="px-4 py-2 rounded-lg border-none bg-blue-600 text-white cursor-pointer font-bold"
                 >
                   Вступить
                 </button>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
-                  <span style={{ color: '#22c55e', fontWeight: 'bold' }}>Ваша группа</span>
+                <div className="flex flex-col gap-2 items-end">
+                  <span className="text-green-500 font-bold text-sm">Ваша группа</span>
                   
-                  <div style={{ fontSize: '13px', color: 'var(--tg-theme-hint-color, #999)' }}>
-                    Общак: <strong>{s.treasury_balance?.toFixed(0) || 0}</strong> 🪙
+                  <div className="text-sm text-slate-600">
+                    Общак: <strong className="text-black">{s.treasury_balance?.toFixed(0) || 0}</strong>  <img src="/icons/coin.png" alt="coin" className="inline-block w-4 h-4 ml-1 align-middle" />
                   </div>
                   
                   {s.boost_until && new Date(s.boost_until) > new Date() ? (
-                    <div style={{ fontSize: '12px', color: '#8b5cf6', fontWeight: 'bold' }}>
+                    <div className="text-xs text-purple-400 font-bold mt-1">
                       🔥 Буст x2 активен до {new Date(s.boost_until).toLocaleTimeString()}
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
+                    <div className="flex gap-1.5 mt-1">
                       <button
                         onClick={() => handleDonate(s.id)}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: '6px',
-                          border: 'none',
-                          backgroundColor: '#fbbf24',
-                          color: '#fff',
-                          fontWeight: 'bold',
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
+                        className="px-3 py-1.5 rounded-md border-none bg-amber-400 text-black font-bold cursor-pointer text-xs"
                       >
                         Скинуть
                       </button>
                       <button
                         onClick={() => handleBoost(s.id)}
                         disabled={(s.treasury_balance || 0) < 1000000}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: '6px',
-                          border: 'none',
-                          backgroundColor: (s.treasury_balance || 0) >= 1000000 ? '#8b5cf6' : '#ccc',
-                          color: '#fff',
-                          fontWeight: 'bold',
-                          cursor: (s.treasury_balance || 0) >= 1000000 ? 'pointer' : 'not-allowed',
-                          fontSize: '12px'
-                        }}
+                        className={`px-3 py-1.5 rounded-md border-none font-bold text-xs ${
+                          (s.treasury_balance || 0) >= 1000000 
+                            ? 'bg-blue-600 text-white cursor-pointer shadow-[0_0_10px_rgba(163,230,53,0.3)]' 
+                            : 'bg-slate-100 text-black cursor-not-allowed hidden-shadow opacity-50'
+                        }`}
                       >
                         x2 Буст (1M)
                       </button>
@@ -249,7 +201,7 @@ const Leaderboard = () => {
               )}
             </div>
           ))}
-          {squads.length === 0 && <div style={{ textAlign: 'center' }}>Групп пока нет</div>}
+          {squads.length === 0 && <div className="text-center">Групп пока нет</div>}
         </div>
       )}
     </div>

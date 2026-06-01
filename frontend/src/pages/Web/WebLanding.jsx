@@ -3,67 +3,58 @@ import { Link } from 'react-router-dom';
 
 const WebLanding = () => {
   return (
-    <div style={{ fontFamily: 'var(--font-family)', color: 'var(--text-color)', display: 'flex', flexDirection: 'column' }}>
-      {/* Hero Section */}
-      <main style={{ flex: 1 }}>
-        <section style={{ textAlign: 'center', padding: '100px 20px', background: 'radial-gradient(circle at center, var(--secondary-bg) 0%, var(--bg-color) 100%)' }}>
-          <h1 style={{ fontSize: '64px', margin: '0 0 20px 0', textShadow: '0 0 20px rgba(59, 130, 246, 0.5)' }}>FAMCS Coin</h1>
-          <p style={{ fontSize: '24px', color: '#94a3b8', maxWidth: '600px', margin: '0 auto 40px auto' }}>
-            Первая студенческая криптовалюта ФПМИ. Тапай енота, улучшай свой Универ, участвуй в DAO и поднимай свой рейтинг!
+    <div className="font-sans text-slate-800 flex flex-col">
+      <main className="flex-1 py-10 px-5 max-w-[1200px] mx-auto w-full">
+        
+        {/* Verification Section matching screenshot */}
+        <section className="flex flex-col gap-[60px] mb-[100px]">
+          
+          <div className="flex items-center">
+             <div className="w-1 h-10 bg-blue-600 mr-5"></div>
+             <h1 className="text-[38px] m-0 uppercase tracking-[2px] font-bold text-slate-900">VERIFIED PARTICIPATION</h1>
+          </div>
+
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(350px,1fr))] gap-[80px] items-center">
+            {/* Left: Cyberpunk Circle Image Placeholder */}
+            <div className="relative flex justify-center">
+               <div className="w-[400px] h-[400px] rounded-full bg-slate-50 flex justify-center items-center overflow-hidden relative shadow-md">
+                 <img src="/logo.png" alt="FAMCS COIN Logo" className="w-[80%] h-[80%] object-contain" />
+               </div>
+            </div>
+
+            {/* Right: Text Content */}
+            <div className="flex flex-col gap-6 pr-5">
+              <h2 className="text-4xl text-blue-600 m-0 font-normal">Telegram Widget Auth</h2>
+              
+              <p className="text-lg text-slate-600 leading-relaxed m-0">
+                Leveraging the <strong className="text-slate-900">Telegram Login Widget</strong> ensures that only verified FAMCS users can participate in governance. This hybrid approach combines the security of the messenger with the power of the web.
+              </p>
+
+              <p className="text-lg text-slate-600 leading-relaxed m-0">
+                Authentication is cryptographically verified on our Go backend, maintaining a <strong className="text-slate-900">Trustless Governance</strong> environment.
+              </p>
+
+              <div className="w-20 h-0.5 bg-blue-600 mt-10"></div>
+            </div>
+          </div>
+        </section>
+
+        {/* Hero Section */}
+        <section className="text-center py-[60px] px-5 bg-white border border-slate-200 rounded-2xl shadow-sm">
+          <h2 className="text-5xl m-0 mb-5 text-slate-900 font-bold">Join the Ecosystem</h2>
+          <p className="text-xl text-slate-600 max-w-[600px] mx-auto mb-10 leading-relaxed">
+            Первая студенческая криптовалюта ФПМИ. Тапай, улучшай свой Универ, участвуй в DAO и поднимай свой рейтинг!
           </p>
           <a 
             href="https://t.me/famcs_coin_bot" 
             target="_blank" 
             rel="noopener noreferrer"
-            style={{ 
-              display: 'inline-block', 
-              padding: '15px 40px', 
-              backgroundColor: 'var(--accent-color)', 
-              color: 'white', 
-              textDecoration: 'none', 
-              borderRadius: '30px', 
-              fontSize: '20px', 
-              fontWeight: 'bold',
-              boxShadow: '0 10px 20px rgba(59, 130, 246, 0.4)',
-              transition: 'transform 0.2s'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            className="inline-block py-4 px-[45px] bg-blue-600 text-white no-underline rounded-lg text-lg font-bold shadow-md transition-all hover:scale-105 hover:bg-blue-700"
           >
-            Играть в Telegram
+            PLAY IN TELEGRAM
           </a>
         </section>
 
-        {/* Documentation Section */}
-        <section id="docs" style={{ padding: '80px 40px', maxWidth: '1000px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '36px', borderBottom: '2px solid var(--accent-color)', paddingBottom: '10px', marginBottom: '40px' }}>Документация</h2>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
-            <div style={{ backgroundColor: 'var(--card-bg)', padding: '30px', borderRadius: '16px', border: '1px solid var(--glass-border)' }}>
-              <h3 style={{ color: 'var(--accent-hover)', fontSize: '24px', marginTop: '0' }}>Экономика и Пассивный доход</h3>
-              <p style={{ color: '#94a3b8', lineHeight: '1.6' }}>
-                В игре присутствует продвинутая экономическая модель. Игроки могут инвестировать заработанные монеты (FAMCS Coins) в улучшения (Универ).
-                Каждое улучшение генерирует пассивный доход каждый час.
-              </p>
-              <p style={{ color: '#94a3b8', lineHeight: '1.6' }}>
-                <strong>Математика:</strong> Стоимость улучшений растет по <i>геометрической прогрессии</i>: 
-                <br /><code style={{ backgroundColor: 'var(--secondary-bg)', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', marginTop: '8px' }}>New Price = Base Price * (Multiplier ^ Level)</code>.
-                Это обеспечивает баланс инфляции монет и делает экономику устойчивой в долгосрочной перспективе.
-              </p>
-            </div>
-
-            <div style={{ backgroundColor: 'var(--card-bg)', padding: '30px', borderRadius: '16px', border: '1px solid var(--glass-border)' }}>
-              <h3 style={{ color: 'var(--accent-hover)', fontSize: '24px', marginTop: '0' }}>Сквады и DAO</h3>
-              <p style={{ color: '#94a3b8', lineHeight: '1.6' }}>
-                Лор игры завязан на объединении в Сквады. Сквады соревнуются за места в глобальном Лидерборде.
-              </p>
-              <p style={{ color: '#94a3b8', lineHeight: '1.6' }}>
-                Через систему <strong>DAO</strong> игроки могут голосовать за будущие обновления, добавление новых скинов и изменения в экономическом балансе. 
-                Ваш голос имеет вес, пропорциональный количеству заработанных монет.
-              </p>
-            </div>
-          </div>
-        </section>
       </main>
     </div>
   );

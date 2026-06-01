@@ -44,6 +44,9 @@ func SetupRouter(pool *pgxpool.Pool, botToken string) http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status": "ok"}`))
 	})
+	
+	// WebSocket
+	mux.HandleFunc("GET /api/ws", handlers.ServeWS)
 
 	// Private Routes (Protected by TMAAuthMiddleware)
 	tmaAuth := middleware.TMAAuthMiddleware(botToken, userRepo)
@@ -108,6 +111,8 @@ func SetupRouter(pool *pgxpool.Pool, botToken string) http.Handler {
 	adminMux.Handle("POST /api/admin/users/ban", middleware.RequirePermission(userRepo, "ban_users")(http.HandlerFunc(adminHandler.BanUser)))
 	adminMux.Handle("POST /api/admin/bets/resolve", middleware.RoleMiddleware(userRepo, "superadmin")(http.HandlerFunc(adminHandler.ResolveBet)))
 	adminMux.Handle("POST /api/admin/generate_invite", middleware.RoleMiddleware(userRepo, "superadmin")(http.HandlerFunc(adminHandler.GenerateInvite)))
+	adminMux.Handle("GET /api/admin/settings", middleware.RoleMiddleware(userRepo, "superadmin")(http.HandlerFunc(adminHandler.GetSettings)))
+	adminMux.Handle("PUT /api/admin/settings", middleware.RequirePermission(userRepo, "superadmin")(http.HandlerFunc(adminHandler.UpdateSetting)))
 
 	// Tasks admin
 	adminMux.Handle("GET /api/admin/tasks", middleware.RequirePermission(userRepo, "manage_tasks")(http.HandlerFunc(taskAdminHandler.GetTasks)))
@@ -126,6 +131,7 @@ func SetupRouter(pool *pgxpool.Pool, botToken string) http.Handler {
 	mux.HandleFunc("GET /api/web/leaderboard/players", webPublicHandler.GetLeaderboardPlayers)
 	mux.HandleFunc("GET /api/web/leaderboard/squads", webPublicHandler.GetLeaderboardSquads)
 	mux.HandleFunc("GET /api/web/hall_of_fame", webPublicHandler.GetHallOfFame)
+	mux.HandleFunc("GET /api/web/config", webPublicHandler.GetPublicConfig)
 	mux.HandleFunc("POST /api/web/auth", webAuthHandler.AuthCallback)
 
 	// Wrap protected routes with Auth Middlewares

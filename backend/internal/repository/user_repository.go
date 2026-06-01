@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"famcscoin-backend/internal/config"
 	"famcscoin-backend/internal/models"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,10 +26,26 @@ type UserRepository interface {
 	GetPublicLeaderboard(ctx context.Context, limit int) ([]*models.User, error)
 	GetHallOfFame(ctx context.Context) ([]*models.User, error)
 	BanUser(ctx context.Context, tgID int64, isBanned bool, reason string) error
+	Pool() *pgxpool.Pool
+	UpdateGameSetting(ctx context.Context, key, value string) error
 }
 
 type userRepository struct {
 	pool *pgxpool.Pool
+}
+
+func (r *userRepository) Pool() *pgxpool.Pool {
+	return r.pool
+}
+
+func (r *userRepository) UpdateGameSetting(ctx context.Context, key, value string) error {
+	query := `
+		INSERT INTO game_settings (key, value)
+		VALUES ($1, $2::jsonb)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+	`
+	_, err := r.pool.Exec(ctx, query, key, fmt.Sprintf(`"%s"`, value))
+	return err
 }
 
 func NewUserRepository(pool *pgxpool.Pool) UserRepository {
@@ -85,7 +102,14 @@ func (r *userRepository) CreateOrUpdateUser(ctx context.Context, user *models.Us
 
 		// Apply referral bonus if referred_by is set
 		if user.ReferredBy != nil {
-			bonusAmount := 50000.0
+			importConfig := true
+			_ = importConfig // Just keeping imports valid if config isn't here
+			
+			bonusStr, _ := config.GlobalSettings.GetString("referral_reward")
+			var bonusAmount float64 = 50000.0
+			if bonusStr != "" {
+				fmt.Sscanf(bonusStr, "%f", &bonusAmount)
+			}
 			
 			// Give bonus to the new user
 			_, err = tx.Exec(ctx, "UPDATE users SET balance = balance + $1 WHERE tg_id = $2", bonusAmount, user.TgID)

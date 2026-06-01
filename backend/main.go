@@ -11,6 +11,7 @@ import (
 	"famcscoin-backend/internal/bot"
 	"famcscoin-backend/internal/config"
 	"famcscoin-backend/internal/db"
+	"famcscoin-backend/internal/hub"
 	"famcscoin-backend/internal/repository"
 	"famcscoin-backend/internal/worker"
 	"github.com/joho/godotenv"
@@ -151,6 +152,9 @@ func main() {
 
 	// Воркеры
 	go worker.StartEconomyWorker(context.Background(), database.Pool)
+
+	// WebSockets Hub
+	go hub.DefaultHub.Run()
 
 	cryptoRepo := repository.NewCryptoRepository(database.Pool)
 	userRepo := repository.NewUserRepository(database.Pool)

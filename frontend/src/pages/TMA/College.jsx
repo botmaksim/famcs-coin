@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import apiClient from '../../api/client';
 import { useUser } from '../../context/UserContext';
 import ShopSkins from './ShopSkins';
+import { Skeleton } from '../../components/Skeleton';
 
 const College = () => {
   const { user, fetchProfile } = useUser();
@@ -48,36 +49,40 @@ const College = () => {
     }
   };
 
-  if (loading) return <div style={{ padding: '20px', textAlign: 'center' }}>Загрузка магазина...</div>;
-  if (error) return <div style={{ padding: '20px', textAlign: 'center', color: 'red' }}>{error}</div>;
+  if (loading) return (
+    <div className="p-5 font-sans">
+      <Skeleton className="w-1/2 h-8 mx-auto mb-2" />
+      <Skeleton className="w-1/3 h-4 mx-auto mb-5" />
+      <div className="flex justify-center gap-2.5 mb-5">
+        <Skeleton className="w-28 h-10 rounded-full" />
+        <Skeleton className="w-28 h-10 rounded-full" />
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-4">
+        {[1, 2, 3, 4, 5, 6].map(i => (
+          <Skeleton key={i} className="h-40 rounded-xl" />
+        ))}
+      </div>
+    </div>
+  );
+  if (error) return <div className="p-5 text-center text-red-500">{error}</div>;
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h2 style={{ textAlign: 'center' }}>Универ (Магазин)</h2>
-      <div style={{ textAlign: 'center', marginBottom: '20px', color: '#94a3b8' }}>
-        Твой баланс: <strong>{user.balance?.toFixed(0)} 🪙</strong>
+    <div className="p-5 font-sans">
+      <h2 className="text-center mb-0 mt-0">Универ (Магазин)</h2>
+      <div className="text-center mb-5 text-slate-600">
+        Твой баланс: <strong>{user.balance?.toFixed(0)}  <img src="/icons/coin.png" alt="coin" className="inline-block w-4 h-4 ml-1 align-middle" /></strong>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px', gap: '10px' }}>
+      <div className="flex justify-center mb-5 gap-2.5">
         <button 
           onClick={() => setActiveTab('upgrades')}
-          style={{
-            padding: '10px 20px', border: 'none', borderRadius: '20px',
-            backgroundColor: activeTab === 'upgrades' ? 'var(--accent-color)' : 'transparent',
-            color: activeTab === 'upgrades' ? '#ffffff' : 'var(--text-color)',
-            cursor: 'pointer', fontWeight: 'bold'
-          }}
+          className={`px-5 py-2.5 rounded-full border-none font-bold cursor-pointer transition-colors ${activeTab === 'upgrades' ? 'bg-blue-600 text-white shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]' : 'bg-transparent text-slate-800'}`}
         >
           Улучшения
         </button>
         <button 
           onClick={() => setActiveTab('skins')}
-          style={{
-            padding: '10px 20px', border: 'none', borderRadius: '20px',
-            backgroundColor: activeTab === 'skins' ? 'var(--accent-color)' : 'transparent',
-            color: activeTab === 'skins' ? '#ffffff' : 'var(--text-color)',
-            cursor: 'pointer', fontWeight: 'bold'
-          }}
+          className={`px-5 py-2.5 rounded-full border-none font-bold cursor-pointer transition-colors ${activeTab === 'skins' ? 'bg-blue-600 text-white shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]' : 'bg-transparent text-slate-800'}`}
         >
           Скины
         </button>
@@ -87,11 +92,7 @@ const College = () => {
         <ShopSkins />
       ) : (
         <>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
-            gap: '15px' 
-          }}>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-4">
         {items.map((item) => {
           // Высчитываем возможность покупки
           // В реальном приложении цена item.price уже должна приходить с бэкенда 
@@ -102,28 +103,19 @@ const College = () => {
           return (
             <div 
               key={item.id} 
-              style={{
-                backgroundColor: 'var(--card-bg)',
-                borderRadius: '12px',
-                padding: '15px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
-                border: '1px solid var(--glass-border)'
-              }}
+              className="bg-[rgba(18,18,18,0.75)] rounded-xl py-4 px-3 flex flex-col justify-between shadow-[0_4px_6px_rgba(0,0,0,0.3)] border border-[rgba(255,255,255,0.05)]"
             >
               <div>
-                <h3 style={{ margin: '0 0 10px 0' }}>{item.title}</h3>
+                <h3 className="m-0 mb-2.5 text-base">{item.title}</h3>
                 {item.description && (
-                  <p style={{ fontSize: '14px', color: '#94a3b8', margin: '0 0 15px 0' }}>
+                  <p className="text-sm text-slate-600 m-0 mb-4">
                     {item.description}
                   </p>
                 )}
                 
-                <div style={{ fontSize: '14px', marginBottom: '15px' }}>
-                  <div style={{ color: '#4ade80', fontWeight: 'bold' }}>
-                    +{item.profit_increase} 🪙 / час
+                <div className="text-sm mb-4">
+                  <div className="text-green-400 font-bold">
+                    +{item.profit_increase}  <img src="/icons/coin.png" alt="coin" className="inline-block w-4 h-4 ml-1 align-middle" /> / час
                   </div>
                   <div>Уровень: {item.current_level || 0}</div>
                 </div>
@@ -132,22 +124,12 @@ const College = () => {
               <button
                 onClick={() => handleBuy(item.id)}
                 disabled={!canAfford || isBuying}
-                style={{
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  backgroundColor: canAfford 
-                    ? 'var(--accent-color)' 
-                    : '#334155',
-                  color: canAfford 
-                    ? '#ffffff' 
-                    : '#94a3b8',
-                  fontWeight: 'bold',
-                  cursor: canAfford ? 'pointer' : 'not-allowed',
-                  opacity: isBuying ? 0.7 : 1
-                }}
+                className={`p-2.5 rounded-lg border-none font-bold transition-all
+                  ${canAfford ? 'bg-blue-600 text-white hover:bg-blue-600 text-white cursor-pointer shadow-[0_0_10px_rgba(163,230,53,0.3)]' : 'bg-slate-100 text-slate-600 cursor-not-allowed hidden-shadow'}
+                  ${isBuying ? 'opacity-70' : 'opacity-100'}
+                `}
               >
-                {isBuying ? 'Покупка...' : `${item.price.toFixed(0)} 🪙`}
+                {isBuying ? 'Покупка...' : `${item.price.toFixed(0)}  <img src="/icons/coin.png" alt="coin" className="inline-block w-4 h-4 ml-1 align-middle" />`}
               </button>
             </div>
           );
@@ -155,7 +137,7 @@ const College = () => {
       </div>
       
       {items.length === 0 && (
-        <div style={{ textAlign: 'center', color: '#999' }}>
+        <div className="text-center text-slate-600 pt-5">
           Карточки пока не добавлены
         </div>
       )}

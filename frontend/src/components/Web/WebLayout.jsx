@@ -3,9 +3,9 @@ import WebNavbar from './WebNavbar';
 import WebFooter from './WebFooter';
 
 export const WebLayout = ({ children }) => (
-  <div className="web-layout" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: 'var(--bg-color)' }}>
+  <div className="flex flex-col min-h-screen">
     <WebNavbar />
-    <main className="web-content" style={{ flex: 1, padding: '20px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+    <main className="flex-1 p-5 max-w-[1200px] mx-auto w-full">
       {children}
     </main>
     <WebFooter />

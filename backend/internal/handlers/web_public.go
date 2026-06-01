@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"famcscoin-backend/internal/config"
 	"famcscoin-backend/internal/repository"
 )
 
@@ -65,4 +66,24 @@ func (h *WebPublicHandler) GetHallOfFame(w http.ResponseWriter, r *http.Request)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(admins)
+}
+
+func (h *WebPublicHandler) GetPublicConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	settings := config.GlobalSettings.GetAll()
+	// Filter sensible public ones
+	publicSettings := map[string]interface{}{}
+	if val, ok := settings["referral_reward"]; ok {
+		publicSettings["referral_reward"] = val
+	}
+	if val, ok := settings["daily_quiz_reward"]; ok {
+		publicSettings["daily_quiz_reward"] = val
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(publicSettings)
 }

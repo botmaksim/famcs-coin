@@ -1,19 +1,20 @@
+@import "tailwindcss";
 :root {
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --bg-color: #0f172a; /* Deep slate background */
-  --text-color: #f8fafc;
-  --secondary-bg: #1e293b;
-  --accent-color: #3b82f6;
-  --accent-hover: #60a5fa;
-  --card-bg: rgba(30, 41, 59, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.08);
+  --bg-color: #f8fafc; /* Sleek light gray / slate 50 */
+  --text-color: #0f172a; /* Slate 900 */
+  --secondary-bg: #ffffff;
+  --accent-color: #2563eb; /* Stylish Blue */
+  --accent-hover: #1d4ed8;
+  --card-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(0, 0, 0, 0.05);
 }
 
 body {
   margin: 0;
   padding: 0;
   font-family: var(--font-family);
-  background-color: #020617; /* Very dark outside container */
+  background-color: #f1f5f9; /* Pure light background */
   color: var(--text-color);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -37,8 +38,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--secondary-bg);
+  background: #333;
   border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
 }
 
 /* General button styles */
@@ -52,9 +56,9 @@ button:active {
 
 /* Animations */
 @keyframes pulseGlow {
-  0% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
-  50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.6); }
-  100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+  0% { box-shadow: 0 0 20px rgba(37, 99, 235, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(37, 99, 235, 0.3); }
+  100% { box-shadow: 0 0 20px rgba(37, 99, 235, 0.1); }
 }
 
 @keyframes float {
@@ -64,8 +68,8 @@ button:active {
 }
 
 .tap-button {
-  background: radial-gradient(circle at 30% 30%, #3b82f6, #1d4ed8);
-  border: 4px solid rgba(255, 255, 255, 0.1);
+  background: radial-gradient(circle at 30% 30%, #eff6ff, #bfdbfe);
+  border: 2px solid rgba(37, 99, 235, 0.3);
   border-radius: 50%;
   width: 250px;
   height: 250px;
@@ -74,7 +78,7 @@ button:active {
   align-items: center;
   margin: 40px auto;
   cursor: pointer;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15), inset 0 0 30px rgba(255, 255, 255, 0.6);
   transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
   animation: pulseGlow 4s infinite alternate;
   user-select: none;
@@ -83,7 +87,7 @@ button:active {
 
 .tap-button:active {
   transform: scale(0.92);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), inset 0 0 50px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), inset 0 0 50px rgba(0, 0, 0, 0.1);
 }
 
 .tap-button img {
@@ -92,5 +96,11 @@ button:active {
   object-fit: contain;
   pointer-events: none;
   animation: float 6s ease-in-out infinite;
-  filter: drop-shadow(0px 10px 10px rgba(0,0,0,0.5));
+  filter: drop-shadow(0px 10px 10px rgba(0,0,0,0.2));
+}
+
+/* Base Headings */
+h1, h2, h3, h4, h5, h6 {
+  color: #0f172a;
+  letter-spacing: 0.5px;
 }

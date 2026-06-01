@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { UserProvider } from './context/UserContext';
+import { UserProvider, useUser } from './context/UserContext';
 import Terminal from './pages/TMA/Terminal';
 import College from './pages/TMA/College';
 import Leaderboard from './pages/TMA/Leaderboard';
@@ -11,6 +11,7 @@ import AcceptInvite from './pages/Web/AcceptInvite';
 import WebDAO from './pages/Web/WebDAO';
 import { WebLayout } from './components/Web/WebLayout';
 import { TmaLayout } from './components/TMA/TmaLayout';
+import WebLanding from './pages/Web/WebLanding';
 
 const Wallet = lazy(() => import('./pages/TMA/Wallet'));
 const WebInfo = lazy(() => import('./pages/Web/WebInfo'));
@@ -20,9 +21,16 @@ const WebHallOfFame = lazy(() => import('./pages/Web/WebHallOfFame'));
 
 const TmaGuard = ({ children }) => {
   const isTelegram = window.Telegram?.WebApp?.initData?.length > 0;
-  // Fallback for local development if initData is mocked
-  const isLocalDev = process.env.NODE_ENV === 'development';
-  return (isTelegram || isLocalDev) ? children : <Navigate to="/info" replace />;
+  const isLocalDev = import.meta.env.MODE === 'development' || import.meta.env.DEV;
+  return (isTelegram || isLocalDev) ? children : <Navigate to="/" replace />;
+};
+
+const AdminGuard = ({ children }) => {
+  const { user } = useUser();
+  if (!user || (user.role !== 'admin' && user.role !== 'superadmin')) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
 };
 
 function App() {
@@ -30,17 +38,13 @@ function App() {
   const location = useLocation();
 
   useEffect(() => {
-    // Инициализация Telegram Web App
     const tg = window.Telegram?.WebApp;
-    
-    // Check if we are inside Telegram by checking initData
     const isTelegram = tg && tg.initData && tg.initData.length > 0;
 
     if (isTelegram) {
       tg.ready();
-      tg.expand(); // Открываем приложение на весь экран
+      tg.expand();
       
-      // Redirect to /app/terminal if we are at root
       if (location.pathname === '/') {
         navigate('/app/terminal', { replace: true });
       }
@@ -48,16 +52,15 @@ function App() {
   }, [navigate, location.pathname]);
 
   return (
-    <Suspense fallback={<div style={{color: 'white', padding: '20px', textAlign: 'center'}}>Загрузка приложения...</div>}>
+    <Suspense fallback={<div className="text-slate-500 p-5 text-center">Загрузка...</div>}>
       <UserProvider>
         <Routes>
-          <Route path="/" element={<WebLayout><WebInfo /></WebLayout>} />
+          <Route path="/" element={<WebLayout><WebLanding /></WebLayout>} />
           <Route path="/info" element={<WebLayout><WebInfo /></WebLayout>} />
-          <Route path="/docs" element={<WebLayout><WebInfo /></WebLayout>} />
           <Route path="/leaderboard" element={<WebLayout><WebLeaderboard /></WebLayout>} />
           <Route path="/hall-of-fame" element={<WebLayout><WebHallOfFame /></WebLayout>} />
           <Route path="/dao" element={<WebLayout><WebDAO /></WebLayout>} />
-          <Route path="/admin-panel" element={<WebLayout><WebAdmin /></WebLayout>} />
+          <Route path="/admin-panel" element={<AdminGuard><WebLayout><WebAdmin /></WebLayout></AdminGuard>} />
           <Route path="/invite" element={<WebLayout><AcceptInvite /></WebLayout>} />
           
           <Route path="/app/*" element={

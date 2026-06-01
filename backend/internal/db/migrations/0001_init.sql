@@ -1,5 +1,5 @@
 -- 1. Таблица сквадов (Вертикальных групп, сквозных через курсы)
-CREATE TABLE squads (
+CREATE TABLE IF NOT EXISTS squads (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL,             -- Например, "11 группа"
     total_points NUMERIC(20, 2) DEFAULT 0.00,     -- Общий исторический счет группы
@@ -9,7 +9,7 @@ CREATE TABLE squads (
 );
 
 -- 2. Таблица пользователей
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     tg_id BIGINT PRIMARY KEY,                      -- Telegram ID выступает основным ключом
     username VARCHAR(100),
     custom_name VARCHAR(100) DEFAULT NULL,        -- Кастомный ник для маскировки в топе
@@ -26,7 +26,7 @@ CREATE TABLE users (
 );
 
 -- 3. Справочник апгрейдов и персонажей (Заполняется из админки)
-CREATE TABLE upgrades (
+CREATE TABLE IF NOT EXISTS upgrades (
     id SERIAL PRIMARY KEY,
     title VARCHAR(100) NOT NULL,
     description TEXT,
@@ -38,7 +38,7 @@ CREATE TABLE upgrades (
 );
 
 -- 4. Связующая таблица купленных апгрейдов юзеров
-CREATE TABLE user_upgrades (
+CREATE TABLE IF NOT EXISTS user_upgrades (
     user_id BIGINT REFERENCES users(tg_id) ON DELETE CASCADE,
     upgrade_id INT REFERENCES upgrades(id) ON DELETE CASCADE,
     level INT DEFAULT 1,
@@ -46,7 +46,7 @@ CREATE TABLE user_upgrades (
 );
 
 -- 5. История транзакций (Для логов, аналитики и чаевых)
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS transactions (
     id BIGSERIAL PRIMARY KEY,
     sender_id BIGINT REFERENCES users(tg_id),      -- Может быть NULL (если начислила система)
     receiver_id BIGINT REFERENCES users(tg_id),    -- Может быть NULL (если покупка в магазине)
@@ -59,7 +59,7 @@ CREATE TABLE transactions (
 
 
 -- 10. Таблица предложений фич (DAO)
-CREATE TABLE proposals (
+CREATE TABLE IF NOT EXISTS proposals (
     id SERIAL PRIMARY KEY,
     user_id BIGINT REFERENCES users(tg_id),
     title VARCHAR(150) NOT NULL,
@@ -70,5 +70,5 @@ CREATE TABLE proposals (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_users_balance ON users(balance DESC) WHERE is_hidden = FALSE; -- Быстрый рендер топа юзеров
-CREATE INDEX idx_squads_points ON squads(total_points DESC);                 -- Быстрый рендер топа групп
+CREATE INDEX IF NOT EXISTS idx_users_balance ON users(balance DESC) WHERE is_hidden = FALSE; -- Быстрый рендер топа юзеров
+CREATE INDEX IF NOT EXISTS idx_squads_points ON squads(total_points DESC);                 -- Быстрый рендер топа групп

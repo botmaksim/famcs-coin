@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import apiClient from '../../api/client';
 import { useUser } from '../../context/UserContext';
+import { Skeleton } from '../../components/Skeleton';
 
 const ShopSkins = () => {
   const { user, fetchProfile } = useUser();
@@ -28,76 +30,73 @@ const ShopSkins = () => {
   const handleBuy = async (skinId) => {
     try {
       await apiClient.post('/shop/skins/buy', { skin_id: skinId });
-      alert('Скин успешно куплен!');
+      toast.success('Скин успешно куплен!');
       await fetchProfile();
       await fetchSkins();
     } catch (err) {
-      alert(err.response?.data || 'Ошибка при покупке скина');
+      toast.error(err.response?.data || 'Ошибка при покупке скина');
     }
   };
 
   const handleSelect = async (skinId) => {
     try {
       await apiClient.post('/shop/skins/active', { skin_id: skinId });
+      toast.success('Скин выбран!');
       await fetchProfile();
       await fetchSkins();
     } catch (err) {
-      alert(err.response?.data || 'Ошибка при выборе скина');
+      toast.error(err.response?.data || 'Ошибка при выборе скина');
     }
   };
 
-  if (loading) return <div style={{ textAlign: 'center' }}>Загрузка скинов...</div>;
-  if (error) return <div style={{ textAlign: 'center', color: 'red' }}>{error}</div>;
+  if (loading) return (
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
+      {[1, 2, 3, 4, 5, 6].map(i => (
+        <div key={i} className="bg-[rgba(18,18,18,0.75)] rounded-xl p-4 flex flex-col items-center">
+           <Skeleton className="w-20 h-20 rounded-full mb-2.5" />
+           <Skeleton className="w-24 h-4 mb-2.5" />
+           <Skeleton className="w-full h-8 rounded-lg" />
+        </div>
+      ))}
+    </div>
+  );
+  if (error) return <div className="text-center pt-5 text-red-500">{error}</div>;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '15px' }}>
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
       {skins.map((skin) => {
         const canAfford = user.balance >= skin.price;
 
         return (
           <div 
             key={skin.id} 
-            style={{
-              backgroundColor: 'var(--tg-theme-secondary-bg-color, #f5f5f5)',
-              borderRadius: '12px',
-              padding: '15px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              boxShadow: skin.is_active ? '0 0 10px rgba(36, 129, 204, 0.5)' : '0 2px 5px rgba(0,0,0,0.1)',
-              border: skin.is_active ? '2px solid var(--tg-theme-button-color, #2481cc)' : '2px solid transparent'
-            }}
+            className={`bg-[rgba(18,18,18,0.75)] rounded-xl p-4 flex flex-col items-center border ${skin.is_active ? 'border-blue-600 shadow-[0_0_15px_rgba(163,230,53,0.4)]' : 'border-[rgba(255,255,255,0.05)] shadow-[0_4px_6px_rgba(0,0,0,0.3)]'}`}
           >
             <img 
               src={skin.image_url} 
               alt={skin.name} 
-              style={{ width: '80px', height: '80px', objectFit: 'contain', marginBottom: '10px' }} 
+              className="w-20 h-20 object-contain mb-2.5" 
             />
-            <h4 style={{ margin: '0 0 10px 0', textAlign: 'center', fontSize: '14px' }}>{skin.name}</h4>
+            <h4 className="m-0 mb-2.5 text-center text-sm">{skin.name}</h4>
             
             {skin.is_active ? (
-              <button disabled style={{
-                padding: '8px', borderRadius: '8px', border: 'none', width: '100%',
-                backgroundColor: '#22c55e', color: '#fff', fontWeight: 'bold'
-              }}>Активно</button>
+              <button disabled className="w-full p-2 rounded-lg border-none bg-green-500 text-black font-bold opacity-100 cursor-default">
+                Активно
+              </button>
             ) : skin.is_owned || skin.price === 0 ? (
               <button 
                 onClick={() => handleSelect(skin.id)}
-                style={{
-                padding: '8px', borderRadius: '8px', border: 'none', width: '100%', cursor: 'pointer',
-                backgroundColor: 'var(--tg-theme-button-color, #2481cc)', color: '#fff', fontWeight: 'bold'
-              }}>Выбрать</button>
+                className="w-full p-2 rounded-lg border-none bg-blue-600 text-white font-bold cursor-pointer transition-colors hover:bg-blue-600 text-white"
+              >
+                Выбрать
+              </button>
             ) : (
               <button 
                 onClick={() => handleBuy(skin.id)}
                 disabled={!canAfford}
-                style={{
-                  padding: '8px', borderRadius: '8px', border: 'none', width: '100%',
-                  backgroundColor: canAfford ? '#f59e0b' : '#ccc', color: '#fff', fontWeight: 'bold',
-                  cursor: canAfford ? 'pointer' : 'not-allowed'
-                }}
+                className={`w-full p-2 rounded-lg border-none font-bold transition-colors ${canAfford ? 'bg-amber-500 text-black cursor-pointer hover:bg-amber-400' : 'bg-slate-100 text-black cursor-not-allowed hidden-shadow opacity-50'}`}
               >
-                {skin.price} 🪙
+                {skin.price}  <img src="/icons/coin.png" alt="coin" className="inline-block w-4 h-4 ml-1 align-middle" />
               </button>
             )}
           </div>

@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"famcscoin-backend/internal/hub"
 	"famcscoin-backend/internal/middleware"
 	"famcscoin-backend/internal/repository"
 	"famcscoin-backend/internal/utils"
@@ -130,6 +131,11 @@ func (h *DaoHandler) Vote(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to cast vote")
 		return
 	}
+
+	hub.Broadcast("dao_vote", map[string]interface{}{
+		"proposal_id": req.ProposalID,
+		"vote_type":   req.VoteType,
+	})
 
 	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
