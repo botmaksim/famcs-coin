@@ -3,24 +3,7 @@ import { Link } from 'react-router-dom';
 
 const WebLanding = () => {
   return (
-    <div style={{ fontFamily: 'var(--font-family)', minHeight: '100vh', backgroundColor: 'var(--bg-color)', color: 'var(--text-color)', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', backgroundColor: 'var(--secondary-bg)', borderBottom: '1px solid var(--glass-border)' }}>
-        <div style={{ fontSize: '24px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--accent-color)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <span style={{ fontSize: '20px' }}>🦝</span>
-          </div>
-          FAMCS Coin
-        </div>
-        <nav style={{ display: 'flex', gap: '20px' }}>
-          <a href="#about" style={{ color: 'var(--text-color)', textDecoration: 'none', fontWeight: 'bold' }}>О проекте</a>
-          <a href="#docs" style={{ color: 'var(--text-color)', textDecoration: 'none', fontWeight: 'bold' }}>Документация</a>
-          <Link to="/leaderboard" style={{ color: 'var(--text-color)', textDecoration: 'none', fontWeight: 'bold' }}>Лидерборд</Link>
-          <Link to="/hall-of-fame" style={{ color: 'var(--text-color)', textDecoration: 'none', fontWeight: 'bold' }}>Зал Славы</Link>
-          <Link to="/dao" style={{ color: 'var(--text-color)', textDecoration: 'none', fontWeight: 'bold' }}>DAO</Link>
-        </nav>
-      </header>
-
+    <div style={{ fontFamily: 'var(--font-family)', color: 'var(--text-color)', display: 'flex', flexDirection: 'column' }}>
       {/* Hero Section */}
       <main style={{ flex: 1 }}>
         <section style={{ textAlign: 'center', padding: '100px 20px', background: 'radial-gradient(circle at center, var(--secondary-bg) 0%, var(--bg-color) 100%)' }}>
@@ -82,11 +65,6 @@ const WebLanding = () => {
           </div>
         </section>
       </main>
-
-      {/* Footer */}
-      <footer style={{ textAlign: 'center', padding: '20px', backgroundColor: 'var(--secondary-bg)', color: '#94a3b8', borderTop: '1px solid var(--glass-border)' }}>
-        © 2026 FAMCS Coin Project. All rights reserved.
-      </footer>
     </div>
   );
 };

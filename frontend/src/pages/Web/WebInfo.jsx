@@ -3,25 +3,8 @@ import { Link } from 'react-router-dom';
 
 const WebInfo = () => {
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: 'var(--bg-color)',
-      color: 'var(--text-color)',
-      fontFamily: 'sans-serif',
-      padding: '40px 20px',
-      lineHeight: '1.6'
-    }}>
+    <div style={{ fontFamily: 'var(--font-family)', color: 'var(--text-color)', lineHeight: '1.6' }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        
-        {/* Navigation / Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '20px' }}>
-          <h1 style={{ margin: 0, fontSize: '2em', color: 'var(--accent-color)' }}>Документация FAMCS Coin</h1>
-          <div style={{ display: 'flex', gap: '15px' }}>
-            <Link to="/leaderboard" style={{ color: '#fff', textDecoration: 'none' }}>Рейтинг</Link>
-            <Link to="/hall-of-fame" style={{ color: '#fff', textDecoration: 'none' }}>Зал Славы</Link>
-            <Link to="/dao" style={{ color: '#fff', textDecoration: 'none' }}>DAO</Link>
-          </div>
-        </div>
 
         {/* Section 1: Gameplay */}
         <section style={{

@@ -28,23 +28,8 @@ const WebLeaderboard = () => {
   }, []);
 
   return (
-    <div style={{ fontFamily: 'var(--font-family)', minHeight: '100vh', backgroundColor: 'var(--bg-color)', color: 'var(--text-color)' }}>
-      {/* Header */}
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', backgroundColor: 'var(--secondary-bg)', borderBottom: '1px solid var(--glass-border)' }}>
-        <Link to="/" style={{ fontSize: '24px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'var(--text-color)' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--accent-color)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <span style={{ fontSize: '20px' }}>🦝</span>
-          </div>
-          FAMCS Coin
-        </Link>
-        <nav style={{ display: 'flex', gap: '20px' }}>
-          <Link to="/" style={{ color: 'var(--text-color)', textDecoration: 'none', fontWeight: 'bold' }}>Главная</Link>
-          <Link to="/leaderboard" style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 'bold' }}>Лидерборд</Link>
-          <Link to="/hall-of-fame" style={{ color: 'var(--text-color)', textDecoration: 'none', fontWeight: 'bold' }}>Зал Славы</Link>
-        </nav>
-      </header>
-
-      <main style={{ padding: '60px 20px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ fontFamily: 'var(--font-family)', color: 'var(--text-color)' }}>
+      <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '48px', textAlign: 'center', marginBottom: '40px', textShadow: '0 0 20px rgba(59, 130, 246, 0.5)' }}>Глобальные Рейтинги</h1>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '40px' }}>
@@ -136,7 +121,7 @@ const WebLeaderboard = () => {
             </table>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 };

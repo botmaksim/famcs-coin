@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState, useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { UserProvider } from './context/UserContext';
 import Terminal from './pages/TMA/Terminal';
@@ -7,9 +7,10 @@ import Leaderboard from './pages/TMA/Leaderboard';
 import DAO from './pages/TMA/DAO';
 import Tasks from './pages/TMA/Tasks';
 import Events from './pages/TMA/Events';
-import { useUser } from './context/UserContext';
 import AcceptInvite from './pages/Web/AcceptInvite';
 import WebDAO from './pages/Web/WebDAO';
+import { WebLayout } from './components/Web/WebLayout';
+import { TmaLayout } from './components/TMA/TmaLayout';
 
 const Wallet = lazy(() => import('./pages/TMA/Wallet'));
 const WebInfo = lazy(() => import('./pages/Web/WebInfo'));
@@ -23,96 +24,6 @@ const TmaGuard = ({ children }) => {
   const isLocalDev = process.env.NODE_ENV === 'development';
   return (isTelegram || isLocalDev) ? children : <Navigate to="/info" replace />;
 };
-
-function TMA_Layout() {
-  const [currentPage, setCurrentPage] = useState('terminal');
-  const { user } = useUser();
-  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'terminal': return <Terminal />;
-      case 'tasks': return <Tasks />;
-      case 'events': return <Events />;
-      case 'college': return <College />;
-      case 'leaderboard': return <Leaderboard />;
-      case 'dao': return <DAO />;
-      case 'wallet': return <Wallet />;
-      default: return <Terminal />;
-    }
-  };
-
-  return (
-    <div className="app-container" style={{ 
-      maxWidth: '480px', 
-      margin: '0 auto', 
-      minHeight: '100vh', 
-      position: 'relative', 
-      overflow: 'hidden',
-      backgroundColor: 'var(--bg-color)',
-      boxShadow: '0 0 20px rgba(0,0,0,0.5)',
-      paddingBottom: '70px',
-      borderLeft: '1px solid var(--glass-border)',
-      borderRight: '1px solid var(--glass-border)',
-    }}>
-      <Suspense fallback={<div style={{color: 'white', padding: '20px', textAlign: 'center'}}>Загрузка...</div>}>
-        {renderPage()}
-      </Suspense>
-      
-      {/* Bottom Navigation */}
-      <div style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '65px',
-        backgroundColor: 'rgba(15, 23, 42, 0.9)',
-        backdropFilter: 'blur(10px)',
-        borderTop: '1px solid var(--glass-border)',
-        display: 'flex',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        zIndex: 1000
-      }}>
-        <div 
-          onClick={() => setCurrentPage('terminal')}
-          style={{ padding: '8px', cursor: 'pointer', fontSize: '12px', transition: '0.2s', fontWeight: currentPage === 'terminal' ? 'bold' : 'normal', color: currentPage === 'terminal' ? 'var(--accent-color)' : '#94a3b8' }}>
-          Тап
-        </div>
-        <div 
-          onClick={() => setCurrentPage('tasks')}
-          style={{ padding: '8px', cursor: 'pointer', fontSize: '12px', transition: '0.2s', fontWeight: currentPage === 'tasks' ? 'bold' : 'normal', color: currentPage === 'tasks' ? 'var(--accent-color)' : '#94a3b8' }}>
-          Earn
-        </div>
-        <div 
-          onClick={() => setCurrentPage('events')}
-          style={{ padding: '8px', cursor: 'pointer', fontSize: '12px', transition: '0.2s', fontWeight: currentPage === 'events' ? 'bold' : 'normal', color: currentPage === 'events' ? 'var(--accent-color)' : '#94a3b8' }}>
-          Ивенты
-        </div>
-        <div 
-          onClick={() => setCurrentPage('college')}
-          style={{ padding: '8px', cursor: 'pointer', fontSize: '12px', transition: '0.2s', fontWeight: currentPage === 'college' ? 'bold' : 'normal', color: currentPage === 'college' ? 'var(--accent-color)' : '#94a3b8' }}>
-          Универ
-        </div>
-        <div 
-          onClick={() => setCurrentPage('leaderboard')}
-          style={{ padding: '8px', cursor: 'pointer', fontSize: '12px', transition: '0.2s', fontWeight: currentPage === 'leaderboard' ? 'bold' : 'normal', color: currentPage === 'leaderboard' ? 'var(--accent-color)' : '#94a3b8' }}>
-          Топ
-        </div>
-        <div 
-          onClick={() => setCurrentPage('dao')}
-          style={{ padding: '8px', cursor: 'pointer', fontSize: '12px', transition: '0.2s', fontWeight: currentPage === 'dao' ? 'bold' : 'normal', color: currentPage === 'dao' ? 'var(--accent-color)' : '#94a3b8' }}>
-          DAO
-        </div>
-        <div 
-          onClick={() => setCurrentPage('wallet')}
-          style={{ padding: '8px', cursor: 'pointer', fontSize: '12px', transition: '0.2s', fontWeight: currentPage === 'wallet' ? 'bold' : 'normal', color: currentPage === 'wallet' ? 'var(--accent-color)' : '#94a3b8' }}>
-          💳
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function App() {
   const navigate = useNavigate();
@@ -129,39 +40,42 @@ function App() {
       tg.ready();
       tg.expand(); // Открываем приложение на весь экран
       
-      // Redirect to /app if we are at root
+      // Redirect to /app/terminal if we are at root
       if (location.pathname === '/') {
-        navigate('/app', { replace: true });
+        navigate('/app/terminal', { replace: true });
       }
-    } else {
-      // If NOT in Telegram, ensure we are not in /app routes accidentally unless explicitly testing
-      // Actually we just let them view / if they are not in Telegram
     }
   }, [navigate, location.pathname]);
 
   return (
     <Suspense fallback={<div style={{color: 'white', padding: '20px', textAlign: 'center'}}>Загрузка приложения...</div>}>
-      <Routes>
-        <Route path="/" element={<WebInfo />} />
-        <Route path="/info" element={<WebInfo />} />
-        <Route path="/docs" element={<WebInfo />} />
-        <Route path="/leaderboard" element={<WebLeaderboard />} />
-        <Route path="/hall-of-fame" element={<WebHallOfFame />} />
-        <Route path="/dao" element={<WebDAO />} />
-        <Route path="/admin-panel" element={
-          <UserProvider>
-            <WebAdmin />
-          </UserProvider>
-        } />
-        <Route path="/invite" element={<AcceptInvite />} />
-        <Route path="/app/*" element={
-          <TmaGuard>
-            <UserProvider>
-              <TMA_Layout />
-            </UserProvider>
-          </TmaGuard>
-        } />
-      </Routes>
+      <UserProvider>
+        <Routes>
+          <Route path="/" element={<WebLayout><WebInfo /></WebLayout>} />
+          <Route path="/info" element={<WebLayout><WebInfo /></WebLayout>} />
+          <Route path="/docs" element={<WebLayout><WebInfo /></WebLayout>} />
+          <Route path="/leaderboard" element={<WebLayout><WebLeaderboard /></WebLayout>} />
+          <Route path="/hall-of-fame" element={<WebLayout><WebHallOfFame /></WebLayout>} />
+          <Route path="/dao" element={<WebLayout><WebDAO /></WebLayout>} />
+          <Route path="/admin-panel" element={<WebLayout><WebAdmin /></WebLayout>} />
+          <Route path="/invite" element={<WebLayout><AcceptInvite /></WebLayout>} />
+          
+          <Route path="/app/*" element={
+            <TmaGuard>
+              <Routes>
+                <Route path="terminal" element={<TmaLayout><Terminal /></TmaLayout>} />
+                <Route path="tasks" element={<TmaLayout><Tasks /></TmaLayout>} />
+                <Route path="events" element={<TmaLayout><Events /></TmaLayout>} />
+                <Route path="college" element={<TmaLayout><College /></TmaLayout>} />
+                <Route path="leaderboard" element={<TmaLayout><Leaderboard /></TmaLayout>} />
+                <Route path="dao" element={<TmaLayout><DAO /></TmaLayout>} />
+                <Route path="wallet" element={<TmaLayout><Wallet /></TmaLayout>} />
+                <Route path="*" element={<Navigate to="terminal" replace />} />
+              </Routes>
+            </TmaGuard>
+          } />
+        </Routes>
+      </UserProvider>
     </Suspense>
   );
 }

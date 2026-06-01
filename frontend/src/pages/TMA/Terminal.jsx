@@ -101,48 +101,6 @@ const Terminal = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '20px' }}>
-      
-      {/* Header Profile Area */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: 'var(--card-bg)',
-        padding: '15px 20px',
-        borderRadius: '16px',
-        border: '1px solid var(--glass-border)',
-        backdropFilter: 'blur(10px)',
-        marginBottom: '40px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <div style={{
-            width: '50px',
-            height: '50px',
-            borderRadius: '50%',
-            overflow: 'hidden',
-            backgroundColor: 'var(--secondary-bg)',
-            border: '2px solid var(--accent-color)'
-          }}>
-            {user.avatar_url ? (
-              <img src={user.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>🧑‍🎓</div>
-            )}
-          </div>
-          <div>
-            <div style={{ fontWeight: 'bold', fontSize: '18px' }}>{user.custom_name || user.username || 'Студент'}</div>
-            <div style={{ fontSize: '12px', color: '#94a3b8' }}>{user.role === 'admin' ? 'Админ' : 'ФПМИ'}</div>
-          </div>
-        </div>
-        
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>Баланс</div>
-          <div style={{ fontWeight: 'bold', fontSize: '22px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <span>{user.balance.toLocaleString()}</span>
-            <span style={{ color: '#fbbf24' }}>🪙</span>
-          </div>
-        </div>
-      </div>
 
       {/* Energy Bar area */}
       <div style={{ textAlign: 'center', marginBottom: '20px' }}>
