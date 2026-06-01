@@ -79,7 +79,7 @@ func (h *ShopHandler) GetSkins(w http.ResponseWriter, r *http.Request) {
 	}
 	tgID := ctxValue.(int64)
 
-	skins, err := h.repo.GetSkins(r.Context(), tgID)
+	skins, err := h.shopRepo.GetSkins(r.Context(), tgID)
 	if err != nil {
 		http.Error(w, "Failed to get skins", http.StatusInternalServerError)
 		return
@@ -114,7 +114,7 @@ func (h *ShopHandler) BuySkin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.repo.BuySkin(r.Context(), tgID, req.SkinID)
+	err := h.shopRepo.BuySkin(r.Context(), tgID, req.SkinID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -145,7 +145,7 @@ func (h *ShopHandler) SetActiveSkin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.repo.SetActiveSkin(r.Context(), tgID, req.SkinID)
+	err := h.shopRepo.SetActiveSkin(r.Context(), tgID, req.SkinID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

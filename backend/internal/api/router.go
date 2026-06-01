@@ -110,5 +110,5 @@ func SetupRouter(pool *pgxpool.Pool, botToken string) http.Handler {
 	mux.Handle("/api/bets/", authMiddleware(protectedMux))
 	mux.Handle("/api/admin/", authMiddleware(adminMux))
 
-	return middleware.CORSMiddleware(mux)
+	return middleware.LoggerMiddleware(middleware.CORSMiddleware(mux))
 }

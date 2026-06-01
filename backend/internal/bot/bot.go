@@ -42,8 +42,11 @@ func (b *Bot) Start(ctx context.Context) {
 				continue
 			}
 
+			log.Printf("[BOT] Received message from UserID: %d in ChatID: %d. Text: %q", update.Message.From.ID, update.Message.Chat.ID, update.Message.Text)
+
 			// Handle /tip commands in groups
 			if strings.HasPrefix(update.Message.Text, "/tip") && update.Message.ReplyToMessage != nil {
+				log.Printf("[BOT] /tip command detected from UserID: %d to UserID: %d", update.Message.From.ID, update.Message.ReplyToMessage.From.ID)
 				b.handleTipCommand(ctx, update.Message)
 			}
 		}
@@ -72,6 +75,7 @@ func (b *Bot) handleTipCommand(ctx context.Context, msg *tgbotapi.Message) {
 	// First, check if receiver is registered
 	receiver, err := b.userRepo.GetUserByID(ctx, receiverID)
 	if err != nil || receiver == nil {
+		log.Printf("[BOT] /tip failed: Receiver %d is not registered", receiverID)
 		// Receiver not registered, send PM to sender
 		pm := tgbotapi.NewMessage(senderID, fmt.Sprintf("Этот студент еще не в игре! Отправь ему эту реф-ссылку: https://t.me/%s?startapp=ref_%d", b.api.Self.UserName, senderID))
 		b.api.Send(pm)
@@ -81,6 +85,7 @@ func (b *Bot) handleTipCommand(ctx context.Context, msg *tgbotapi.Message) {
 	// Process tip transaction
 	err = b.userRepo.TipUser(ctx, senderID, receiverID, amount)
 	if err != nil {
+		log.Printf("[BOT] /tip transaction failed from %d to %d: %v", senderID, receiverID, err)
 		// Possibly log error or notify sender if we want (e.g., insufficient balance)
 		if err.Error() == "insufficient balance" {
 			pm := tgbotapi.NewMessage(senderID, "Недостаточно коинов для перевода.")
@@ -88,6 +93,8 @@ func (b *Bot) handleTipCommand(ctx context.Context, msg *tgbotapi.Message) {
 		}
 		return
 	}
+	
+	log.Printf("[BOT] /tip successful: %d sent %f coins to %d", senderID, amount, receiverID)
 
 	// Delete the /tip message from group
 	delMsg := tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID)

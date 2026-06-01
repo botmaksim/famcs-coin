@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../../api/client';
 import { useUser } from '../../context/UserContext';
-import { useUser } from '../../context/UserContext';
 import ShopSkins from './ShopSkins';
 
 const College = () => {

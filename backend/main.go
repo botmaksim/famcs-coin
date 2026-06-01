@@ -11,6 +11,7 @@ import (
 	"famcscoin-backend/internal/bot"
 	"famcscoin-backend/internal/config"
 	"famcscoin-backend/internal/db"
+	"famcscoin-backend/internal/repository"
 	"famcscoin-backend/internal/worker"
 )
 
