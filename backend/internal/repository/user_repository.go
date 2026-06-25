@@ -24,6 +24,7 @@ type UserRepository interface {
 	GenerateAdminInvite(ctx context.Context, adminID int64, role string) (string, error)
 	AcceptAdminInvite(ctx context.Context, token string, tgID int64) error
 	GetPublicLeaderboard(ctx context.Context, limit int) ([]*models.User, error)
+	GetTopTippers(ctx context.Context, limit int) ([]map[string]interface{}, error)
 	GetHallOfFame(ctx context.Context) ([]*models.User, error)
 	BanUser(ctx context.Context, tgID int64, isBanned bool, reason string) error
 	Pool() *pgxpool.Pool
@@ -238,6 +239,47 @@ func (r *userRepository) GetPublicLeaderboard(ctx context.Context, limit int) ([
 		users = append(users, user)
 	}
 	return users, nil
+}
+
+func (r *userRepository) GetTopTippers(ctx context.Context, limit int) ([]map[string]interface{}, error) {
+	query := `
+		SELECT u.tg_id, u.username, u.custom_name, u.avatar_url, SUM(t.amount) as total_tips
+		FROM users u
+		JOIN transactions t ON u.tg_id = t.sender_id
+		WHERE t.type = 'tip' AND u.is_hidden = FALSE
+		GROUP BY u.tg_id
+		ORDER BY total_tips DESC
+		LIMIT $1
+	`
+	rows, err := r.pool.Query(ctx, query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("GetTopTippers query error: %w", err)
+	}
+	defer rows.Close()
+
+	var tippers []map[string]interface{}
+	for rows.Next() {
+		var tgID int64
+		var username string
+		var customName *string
+		var avatarURL *string
+		var totalTips float64
+
+		err := rows.Scan(&tgID, &username, &customName, &avatarURL, &totalTips)
+		if err != nil {
+			return nil, fmt.Errorf("GetTopTippers scan error: %w", err)
+		}
+
+		tipper := map[string]interface{}{
+			"tg_id": tgID,
+			"username": username,
+			"custom_name": customName,
+			"avatar_url": avatarURL,
+			"total_tips": totalTips,
+		}
+		tippers = append(tippers, tipper)
+	}
+	return tippers, nil
 }
 
 func (r *userRepository) GetHallOfFame(ctx context.Context) ([]*models.User, error) {

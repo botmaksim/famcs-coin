@@ -1,52 +1,42 @@
-import { useState, useEffect } from 'react';
-import apiClient from '../../api/client';
+import { useState } from 'react';
+import { ShopService } from '../../api/services/ShopService';
 import { useUser } from '../../context/UserContext';
 import ShopSkins from './ShopSkins';
 import { Skeleton } from '../../components/Skeleton';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const College = () => {
   const { user, fetchProfile } = useUser();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('upgrades'); // 'upgrades' | 'skins'
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [buyingId, setBuyingId] = useState(null);
 
-  useEffect(() => {
-    const fetchItems = async () => {
-      try {
-        const response = await apiClient.get('/shop/items');
-        setItems(response.data.items || []); // Предполагаем формат { items: [...] }
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch shop items:', err);
-        setError('Не удалось загрузить список улучшений');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const { data: itemsData, isLoading: loading, error: itemsError } = useQuery({
+    queryKey: ['shopItems'],
+    queryFn: async () => {
+      const response = await ShopService.getItems();
+      return response.data.items || [];
+    },
+    enabled: activeTab === 'upgrades'
+  });
 
-    fetchItems();
-  }, []);
+  const items = itemsData || [];
+  const error = itemsError ? 'Не удалось загрузить список улучшений' : null;
 
-  const handleBuy = async (upgradeId) => {
-    try {
-      setBuyingId(upgradeId);
-      await apiClient.post('/shop/buy', { upgrade_id: upgradeId });
-      
-      // После успешной покупки обновляем профиль с бэкенда (чтобы актуализировать баланс и пассивку)
-      await fetchProfile();
-
-      // Опционально: можно также перегрузить список items, чтобы обновить цены/уровни
-      // Если бэкенд возвращает обновленные цены в /shop/items, то нужно дернуть и его.
-    } catch (err) {
+  const buyItemMutation = useMutation({
+    mutationFn: (upgradeId) => ShopService.buyItem(upgradeId),
+    onSuccess: () => {
+      fetchProfile();
+      queryClient.invalidateQueries({ queryKey: ['shopItems'] });
+    },
+    onError: (err) => {
       console.error('Buy error:', err);
-      // Пытаемся достать текст ошибки от бэкенда
       const errMsg = err.response?.data || err.message || 'Ошибка при покупке';
       alert(`Не удалось купить: ${errMsg}`);
-    } finally {
-      setBuyingId(null);
     }
+  });
+
+  const handleBuy = (upgradeId) => {
+    buyItemMutation.mutate(upgradeId);
   };
 
   if (loading) return (
@@ -98,7 +88,7 @@ const College = () => {
           // В реальном приложении цена item.price уже должна приходить с бэкенда 
           // с учетом уровня юзера (base_price * (price_multiplier ^ current_level)).
           const canAfford = user.balance >= item.price;
-          const isBuying = buyingId === item.id;
+          const isBuying = buyItemMutation.isPending && buyItemMutation.variables === item.id;
 
           return (
             <div 
@@ -124,12 +114,16 @@ const College = () => {
               <button
                 onClick={() => handleBuy(item.id)}
                 disabled={!canAfford || isBuying}
-                className={`p-2.5 rounded-lg border-none font-bold transition-all
-                  ${canAfford ? 'bg-blue-600 text-white hover:bg-blue-600 text-white cursor-pointer shadow-[0_0_10px_rgba(163,230,53,0.3)]' : 'bg-slate-100 text-slate-600 cursor-not-allowed hidden-shadow'}
+                className={`p-2.5 rounded-lg border-none font-bold flex justify-center items-center gap-1 transition-all
+                  ${canAfford ? 'bg-blue-600 text-white cursor-pointer shadow-[0_0_10px_rgba(163,230,53,0.3)] hover:bg-blue-700' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed hidden-shadow'}
                   ${isBuying ? 'opacity-70' : 'opacity-100'}
                 `}
               >
-                {isBuying ? 'Покупка...' : `${item.price.toFixed(0)}  <img src="/icons/coin.png" alt="coin" className="inline-block w-4 h-4 ml-1 align-middle" />`}
+                {isBuying ? 'Покупка...' : (
+                  <>
+                    {item.price.toFixed(0)} <img src="/icons/coin.png" alt="coin" className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </div>
           );

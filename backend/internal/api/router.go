@@ -78,6 +78,7 @@ func SetupRouter(pool *pgxpool.Pool, botToken string) http.Handler {
 
 	// Leaderboard
 	protectedMux.HandleFunc("GET /api/leaderboard/users", leaderboardHandler.GetUsers)
+	protectedMux.HandleFunc("GET /api/leaderboard/tippers", leaderboardHandler.GetTippers)
 
 	// DAO
 	protectedMux.HandleFunc("GET /api/dao/proposals", daoHandler.GetProposals)
@@ -130,6 +131,7 @@ func SetupRouter(pool *pgxpool.Pool, botToken string) http.Handler {
 	// Web Public Routes
 	mux.HandleFunc("GET /api/web/leaderboard/players", webPublicHandler.GetLeaderboardPlayers)
 	mux.HandleFunc("GET /api/web/leaderboard/squads", webPublicHandler.GetLeaderboardSquads)
+	mux.HandleFunc("GET /api/web/leaderboard/tippers", webPublicHandler.GetLeaderboardTippers)
 	mux.HandleFunc("GET /api/web/hall_of_fame", webPublicHandler.GetHallOfFame)
 	mux.HandleFunc("GET /api/web/config", webPublicHandler.GetPublicConfig)
 	mux.HandleFunc("POST /api/web/auth", webAuthHandler.AuthCallback)

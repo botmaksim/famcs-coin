@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import apiClient from '../api/client';
+import { WebService } from '../api/services/WebService';
 
 const TelegramLoginWidget = ({ onAuth }) => {
   const containerRef = useRef(null);
@@ -9,7 +9,7 @@ const TelegramLoginWidget = ({ onAuth }) => {
     if (containerRef.current && containerRef.current.children.length === 0) {
       window.onTelegramAuth = async (user) => {
         try {
-          const res = await apiClient.post('/web/auth', user);
+          const res = await WebService.auth(user);
           if (res.data && res.data.token) {
             localStorage.setItem('web_user_token', res.data.token);
             if (onAuth) onAuth();
@@ -34,9 +34,9 @@ const TelegramLoginWidget = ({ onAuth }) => {
   }, [onAuth]);
 
   return (
-    <div className="flex flex-col items-center justify-center p-10 bg-white rounded-xl border border-slate-200 shadow-sm w-full max-w-md mx-auto">
-      <h2 className="mb-5 text-center font-bold text-2xl text-slate-800">Auth Required</h2>
-      <p className="text-slate-500 mb-8 text-center text-sm">Please connect via Telegram to confirm your identity.</p>
+    <div className="flex flex-col items-center justify-center p-10 bg-[var(--card-bg)] rounded-xl border border-[var(--glass-border)] shadow-sm w-full max-w-md mx-auto backdrop-blur-md">
+      <h2 className="mb-5 text-center font-bold text-2xl text-[var(--text-color)]">Требуется Авторизация</h2>
+      <p className="text-slate-500 dark:text-slate-400 mb-8 text-center text-sm">Пожалуйста, войдите через Telegram для подтверждения личности.</p>
       <div ref={containerRef} className="mb-4"></div>
     </div>
   );

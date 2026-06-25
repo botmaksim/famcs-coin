@@ -1,63 +1,64 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import apiClient from '../../api/client';
+import { CryptoService } from '../../api/services/CryptoService';
 import { useUser } from '../../context/UserContext';
 import { Skeleton } from '../../components/Skeleton';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const Wallet = () => {
   const { user, loading: userLoading, fetchProfile } = useUser();
+  const queryClient = useQueryClient();
   const [walletInput, setWalletInput] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
 
   const smartContractAddress = import.meta.env.VITE_SMART_CONTRACT_ADDRESS || '0xComingSoon...';
 
-  const fetchHistory = async () => {
-    try {
-      const res = await apiClient.get('/crypto/history');
-      setHistory(res.data.history || []);
-    } catch (err) {
-      console.error('Failed to fetch history', err);
-    }
-  };
+  const { data: historyData, isLoading: historyLoading } = useQuery({
+    queryKey: ['walletHistory'],
+    queryFn: async () => {
+      const res = await CryptoService.getHistory();
+      return res.data.history || [];
+    },
+    enabled: !!user?.wallet_address,
+  });
 
-  useEffect(() => {
-    if (user?.wallet_address) {
-      fetchHistory();
-    }
-  }, [user]);
+  const history = historyData || [];
 
-  const handleBindWallet = async (e) => {
-    e.preventDefault();
-    if (!walletInput) return;
-    setLoading(true);
-    try {
-      await apiClient.post('/crypto/wallet', { wallet_address: walletInput });
+  const bindWalletMutation = useMutation({
+    mutationFn: (wallet) => CryptoService.bindWallet(wallet),
+    onSuccess: () => {
       toast.success('Кошелек успешно привязан!');
-      await fetchProfile(); // Update context to show bound wallet
-    } catch (err) {
+      fetchProfile();
+      queryClient.invalidateQueries({ queryKey: ['walletHistory'] });
+    },
+    onError: (err) => {
       toast.error(err.response?.data || 'Failed to bind wallet');
-    } finally {
-      setLoading(false);
     }
-  };
+  });
 
-  const handleWithdraw = async (e) => {
-    e.preventDefault();
-    if (!withdrawAmount || isNaN(withdrawAmount)) return;
-    setLoading(true);
-    try {
-      await apiClient.post('/crypto/withdraw', { amount: parseInt(withdrawAmount) });
+  const withdrawMutation = useMutation({
+    mutationFn: (amount) => CryptoService.withdraw(amount),
+    onSuccess: () => {
       toast.success('Запрос на вывод успешно создан!');
       setWithdrawAmount('');
-      await fetchProfile();
-      await fetchHistory();
-    } catch (err) {
+      fetchProfile();
+      queryClient.invalidateQueries({ queryKey: ['walletHistory'] });
+    },
+    onError: (err) => {
       toast.error(err.response?.data || 'Failed to withdraw');
-    } finally {
-      setLoading(false);
     }
+  });
+
+  const handleBindWallet = (e) => {
+    e.preventDefault();
+    if (!walletInput) return;
+    bindWalletMutation.mutate(walletInput);
+  };
+
+  const handleWithdraw = (e) => {
+    e.preventDefault();
+    if (!withdrawAmount || isNaN(withdrawAmount)) return;
+    withdrawMutation.mutate(parseInt(withdrawAmount));
   };
 
   const shortenAddress = (addr) => {
@@ -80,9 +81,9 @@ const Wallet = () => {
       <h2 className="text-center mb-5"><img src="/icons/wallet.png" alt="wallet" className="inline-block w-6 h-6 mr-2 align-middle" /> Кошелек</h2>
 
       {!user?.wallet_address ? (
-        <div className="bg-[rgba(18,18,18,0.75)] p-5 rounded-2xl border border-[rgba(255,255,255,0.05)] shadow-[0_4px_6px_rgba(0,0,0,0.1)]">
-          <h3 className="mt-0 text-black">Привязка кошелька</h3>
-          <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+        <div className="bg-[var(--card-bg)] p-5 rounded-2xl border border-[var(--glass-border)] shadow-[0_4px_6px_rgba(0,0,0,0.1)]">
+          <h3 className="mt-0 text-[var(--text-color)]">Привязка кошелька</h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 leading-relaxed">
             Для ввода и вывода средств необходимо привязать вашего крипто-кошелька (например, MetaMask или Tonkeeper).
           </p>
           <form onSubmit={handleBindWallet} className="flex flex-col gap-2.5">
@@ -91,37 +92,37 @@ const Wallet = () => {
               placeholder="Адрес кошелька (0x... или EQ...)"
               value={walletInput}
               onChange={(e) => setWalletInput(e.target.value)}
-              className="p-3 rounded-lg border border-slate-200 bg-slate-100 text-black outline-none focus:border-blue-600 focus:bg-[rgba(0,0,0,0.4)] transition-all"
+              className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-[var(--text-color)] outline-none focus:border-blue-600 focus:bg-white dark:focus:bg-slate-900 transition-all"
               required
             />
             <button
               type="submit"
-              disabled={loading}
-              className={`p-3 rounded-lg border-none font-bold transition-all ${loading ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : 'bg-blue-600 text-white cursor-pointer hover:bg-blue-600 text-white shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]'}`}
+              disabled={bindWalletMutation.isPending}
+              className={`p-3 rounded-lg border-none font-bold transition-all ${bindWalletMutation.isPending ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-blue-600 text-white cursor-pointer hover:bg-blue-700 shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]'}`}
             >
-              {loading ? 'Привязка...' : 'Привязать кошелек'}
+              {bindWalletMutation.isPending ? 'Привязка...' : 'Привязать кошелек'}
             </button>
           </form>
         </div>
       ) : (
         <>
-          <div className="bg-[rgba(18,18,18,0.75)] p-5 rounded-2xl border border-[rgba(255,255,255,0.05)] shadow-[0_4px_6px_rgba(0,0,0,0.1)] mb-5">
+          <div className="bg-[var(--card-bg)] p-5 rounded-2xl border border-[var(--glass-border)] shadow-[0_4px_6px_rgba(0,0,0,0.1)] mb-5">
             <div className="flex justify-between items-center mb-4">
-              <span className="text-slate-600">Ваш кошелек:</span>
-              <strong className="bg-slate-50 px-2.5 py-1 rounded mx-0 font-mono text-sm text-black border border-[rgba(255,255,255,0.05)]">
+              <span className="text-slate-600 dark:text-slate-400">Ваш кошелек:</span>
+              <strong className="bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded mx-0 font-mono text-sm text-[var(--text-color)] border border-slate-200 dark:border-slate-700">
                 {shortenAddress(user.wallet_address)}
               </strong>
             </div>
 
             <div className="p-4 bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.3)] rounded-xl mb-4">
-              <h4 className="m-0 mb-2.5 text-blue-400">Депозит</h4>
-              <p className="text-[13px] m-0 mb-2 leading-relaxed text-slate-700">Для пополнения баланса отправьте токены на адрес нашего смарт-контракта:</p>
-              <code className="block p-2 bg-[rgba(0,0,0,0.3)] rounded font-mono break-all text-[13px] border border-[rgba(255,255,255,0.05)] text-black shadow-inner">
+              <h4 className="m-0 mb-2.5 text-blue-600 dark:text-blue-400">Депозит</h4>
+              <p className="text-[13px] m-0 mb-2 leading-relaxed text-slate-700 dark:text-slate-300">Для пополнения баланса отправьте токены на адрес нашего смарт-контракта:</p>
+              <code className="block p-2 bg-slate-100 dark:bg-slate-900 rounded font-mono break-all text-[13px] border border-slate-200 dark:border-slate-800 text-[var(--text-color)] shadow-inner">
                 {smartContractAddress}
               </code>
             </div>
 
-            <h4 className="m-0 mb-2.5 text-black">Вывод средств</h4>
+            <h4 className="m-0 mb-2.5 text-[var(--text-color)]">Вывод средств</h4>
             <form onSubmit={handleWithdraw} className="flex flex-col gap-2.5">
               <div className="flex items-center gap-2.5">
                 <input
@@ -130,41 +131,41 @@ const Wallet = () => {
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   max={user.balance}
-                  className="flex-1 p-3 rounded-lg border border-slate-200 bg-slate-100 text-black outline-none focus:border-blue-600 transition-all font-mono"
+                  className="flex-1 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-[var(--text-color)] outline-none focus:border-blue-600 transition-all font-mono"
                   required
                 />
-                <span className="text-[13px] text-slate-600 select-none">/ {Math.floor(user.balance)} доступно</span>
+                <span className="text-[13px] text-slate-600 dark:text-slate-400 select-none">/ {Math.floor(user.balance)} доступно</span>
               </div>
               <button
                 type="submit"
-                disabled={loading || !withdrawAmount || withdrawAmount > user.balance}
+                disabled={withdrawMutation.isPending || !withdrawAmount || withdrawAmount > user.balance}
                 className={`p-3 rounded-lg border-none font-bold transition-all ${
-                  (loading || withdrawAmount > user.balance) 
-                  ? 'bg-slate-100 text-slate-600 cursor-not-allowed opacity-70 hidden-shadow' 
-                  : 'bg-blue-600 text-white cursor-pointer shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] hover:bg-blue-600 text-white'
+                  (withdrawMutation.isPending || withdrawAmount > user.balance) 
+                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 cursor-not-allowed opacity-70 hidden-shadow' 
+                  : 'bg-blue-600 text-white cursor-pointer shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] hover:bg-blue-700'
                 }`}
               >
-                {loading ? 'Обработка...' : 'Вывести токены (Withdraw)'}
+                {withdrawMutation.isPending ? 'Обработка...' : 'Вывести токены (Withdraw)'}
               </button>
             </form>
           </div>
 
-          <div className="bg-[rgba(18,18,18,0.75)] p-5 rounded-2xl border border-[rgba(255,255,255,0.05)] shadow-[0_4px_6px_rgba(0,0,0,0.1)] mb-20">
-            <h3 className="mt-0 mb-4 text-black">История транзакций</h3>
+          <div className="bg-[var(--card-bg)] p-5 rounded-2xl border border-[var(--glass-border)] shadow-[0_4px_6px_rgba(0,0,0,0.1)] mb-20">
+            <h3 className="mt-0 mb-4 text-[var(--text-color)]">История транзакций</h3>
             <div className="flex flex-col gap-2.5">
               {history.map((tx) => (
-                <div key={tx.id} className="flex justify-between items-center bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)] p-3 rounded-xl shadow-sm transition-colors hover:bg-white">
+                <div key={tx.id} className="flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-3 rounded-xl shadow-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800">
                   <div className="flex flex-col gap-1">
-                    <span className={`font-bold text-[15px] ${tx.type === 'deposit' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    <span className={`font-bold text-[15px] ${tx.type === 'deposit' ? 'text-emerald-500 dark:text-emerald-400' : 'text-amber-500 dark:text-amber-400'}`}>
                       {tx.type === 'deposit' ? '⬇️ Депозит' : '⬆️ Вывод'}
                     </span>
-                    <span className="text-xs text-slate-500 font-mono">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                       {new Date(tx.created_at).toLocaleString()}
                     </span>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <strong className="text-black font-mono">{tx.amount} коинов</strong>
-                    <span className={`text-xs ${tx.status === 'completed' ? 'text-emerald-400' : 'text-slate-600'}`}>
+                    <strong className="text-[var(--text-color)] font-mono">{tx.amount} коинов</strong>
+                    <span className={`text-xs ${tx.status === 'completed' ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-500'}`}>
                       {tx.status === 'pending' ? 'Ожидание ⏳' : 'Выполнено ✅'}
                     </span>
                   </div>

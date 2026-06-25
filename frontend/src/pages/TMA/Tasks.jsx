@@ -1,42 +1,55 @@
-import { useState, useEffect } from "react";
-import { useUser } from "../../context/UserContext";
-import apiClient from "../../api/client";
+import { useState } from "react";
+import { useUser } from "@/context/UserContext";
+import { TasksService } from "@/api/services/TasksService";
 import { toast } from "react-hot-toast";
-import { Skeleton } from "../../components/Skeleton";
+import { Skeleton } from "@/components/Skeleton";
+import { playFanfareSound } from "@/utils/audio";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "@/i18n";
 
 const Tasks = () => {
-  const { user, fetchProfile } = useUser();
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { user, fetchProfile, soundEnabled } = useUser();
   const [copied, setCopied] = useState(false);
-  const [baseReward, setBaseReward] = useState("50000");
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
-  const fetchTasks = async () => {
-    setLoading(true);
-    try {
-      const res = await apiClient.get("/tasks");
-      setTasks(res.data.tasks || []);
+  const { data: tasksData, isLoading: loadingTasks, error: tasksError } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: async () => {
+      const res = await TasksService.getTasks();
+      return res.data.tasks || [];
+    },
+  });
 
-      const confRes = await apiClient.get("/web/config");
-      if (confRes.data && confRes.data.referral_reward) {
-        setBaseReward(confRes.data.referral_reward);
-      }
-    } catch (err) {
-      setError("Не удалось загрузить задания");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: configData } = useQuery({
+    queryKey: ['webConfig'],
+    queryFn: async () => {
+      const res = await TasksService.getWebConfig();
+      return res.data;
+    },
+    staleTime: 60 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchTasks();
-  }, []);
+  const baseReward = configData?.referral_reward || "50000";
+  const tasks = tasksData || [];
+  const loading = loadingTasks;
+  const error = tasksError ? t('tasks.errorLoading') : null;
+
+  const claimMutation = useMutation({
+    mutationFn: (taskId) => TasksService.claimTask(taskId),
+    onSuccess: (data, taskId) => {
+      // Optimistically update tasks list
+      queryClient.setQueryData(['tasks'], (oldTasks) => {
+        if (!oldTasks) return [];
+        return oldTasks.map((t) => (t.id === taskId ? { ...t, is_completed: true } : t));
+      });
+      fetchProfile(); // Update balance
+    },
+  });
 
   const handleClaim = async (task) => {
     if (task.is_completed) return;
 
-    // Open Telegram link or normal link
     if (
       window.Telegram?.WebApp?.openTelegramLink &&
       task.link_url.includes("t.me")
@@ -46,16 +59,13 @@ const Tasks = () => {
       window.open(task.link_url, "_blank");
     }
 
-    // Small delay to simulate user looking at the group before claiming
     setTimeout(async () => {
       try {
-        await apiClient.post("/tasks/claim", { task_id: task.id });
+        await claimMutation.mutateAsync(task.id);
+        playFanfareSound(soundEnabled);
         toast.success(`Получено +${task.reward_coins.toLocaleString()} коинов`);
-        await fetchProfile(); // Update balance in context
-        await fetchTasks(); // Update tasks list to show completed status
       } catch (err) {
         console.error("Claim error:", err);
-        // Might fail if already completed via race condition
         const msg = err.response?.data || "Не удалось получить награду";
         if (err.response?.status !== 409) {
           toast.error(msg);
@@ -73,28 +83,27 @@ const Tasks = () => {
 
   return (
     <div className="p-5 pb-[90px] font-sans">
-      <h2 className="text-center mb-2.5 mt-0">Задания (Earn)</h2>
-      <p className="text-center text-slate-600 mb-[30px] text-sm">
-        Выполняй простые квесты и получай монеты!
+      <h2 className="text-center mb-2.5 mt-0">{t('tasks.title')}</h2>
+      <p className="text-center text-slate-600 dark:text-slate-400 mb-[30px] text-sm">
+        {t('tasks.subtitle')}
       </p>
 
       {/* Referral Block */}
-      <div className="bg-[rgba(34,197,94,0.1)] border border-[rgba(34,197,94,0.3)] rounded-2xl p-5 mb-5 text-center shadow-[0_4px_6px_rgba(0,0,0,0.1)]">
-        <h3 className="m-0 mb-2.5 text-green-400">🎁 Пригласи друга</h3>
-        <p className="m-0 mb-4 text-sm text-slate-700">
-          Получи {Number(baseReward).toLocaleString()}{" "}
+      <div className="bg-green-50 dark:bg-[rgba(34,197,94,0.1)] border border-green-200 dark:border-[rgba(34,197,94,0.3)] rounded-2xl p-5 mb-5 text-center shadow-[0_4px_6px_rgba(0,0,0,0.1)]">
+        <h3 className="m-0 mb-2.5 text-green-600 dark:text-green-400">{t('tasks.inviteFriend')}</h3>
+        <p className="m-0 mb-4 text-sm text-slate-700 dark:text-slate-300">
+          {t('tasks.inviteReward', { reward: Number(baseReward).toLocaleString() })}{" "}
           <img
             src="/icons/coin.png"
             alt="coin"
             className="inline-block w-4 h-4 ml-1 align-middle"
-          />{" "}
-          за каждого друга!
+          />
         </p>
         <button
           onClick={handleCopyReferral}
-          className={`w-full p-3 rounded-xl border-none font-bold text-[15px] cursor-pointer transition-all shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] ${copied ? "bg-green-400 text-slate-900" : "bg-blue-600 text-white"}`}
+          className={`w-full p-3 rounded-xl border-none font-bold text-[15px] cursor-pointer transition-all shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] ${copied ? "bg-green-500 dark:bg-green-400 text-white dark:text-slate-900" : "bg-blue-600 text-white hover:bg-blue-700"}`}
         >
-          {copied ? "Скопировано! ✅" : "Скопировать ссылку"}
+          {copied ? t('tasks.copied') : t('tasks.copyLink')}
         </button>
       </div>
 
@@ -112,12 +121,12 @@ const Tasks = () => {
           {tasks.map((task) => (
             <div
               key={task.id}
-              className="bg-[rgba(18,18,18,0.75)] rounded-2xl p-5 border border-[rgba(255,255,255,0.05)] backdrop-blur-md shadow-[0_4px_6px_rgba(0,0,0,0.1)]"
+              className="bg-[var(--card-bg)] rounded-2xl p-5 border border-[var(--glass-border)] backdrop-blur-md shadow-[0_4px_6px_rgba(0,0,0,0.1)]"
             >
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 className="m-0 mb-1.5 text-lg">{task.title}</h3>
-                  <p className="m-0 text-[13px] text-slate-600 leading-tight">
+                  <h3 className="m-0 mb-1.5 text-lg text-[var(--text-color)]">{task.title}</h3>
+                  <p className="m-0 text-[13px] text-slate-600 dark:text-slate-400 leading-tight">
                     {task.description}
                   </p>
                 </div>
@@ -128,18 +137,22 @@ const Tasks = () => {
                 disabled={task.is_completed}
                 className={`w-full p-3 rounded-xl border-none font-bold text-[15px] flex justify-center items-center gap-2 transition-all ${
                   task.is_completed
-                    ? "bg-slate-100 text-slate-600 cursor-default hidden-shadow"
-                    : "bg-blue-600 text-white cursor-pointer shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]"
+                    ? "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 cursor-default hidden-shadow"
+                    : "bg-blue-600 text-white cursor-pointer shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] hover:bg-blue-700"
                 }`}
               >
-                {task.is_completed
-                  ? "Выполнено"
-                  : `Выполнить (+${task.reward_coins.toLocaleString()}  <img src="/icons/coin.png" alt="coin" className="inline-block w-4 h-4 ml-1 align-middle" />)`}
+                {task.is_completed ? (
+                  t('tasks.completed')
+                ) : (
+                  <>
+                    {t('tasks.claimReward', { reward: task.reward_coins.toLocaleString() })} <img src="/icons/coin.png" alt="coin" className="w-4 h-4 ml-1" />
+                  </>
+                )}
               </button>
             </div>
           ))}
           {tasks.length === 0 && (
-            <div className="text-center text-slate-600">Заданий пока нет</div>
+            <div className="text-center text-slate-600 dark:text-slate-400">{t('tasks.emptyTasks')}</div>
           )}
         </div>
       )}

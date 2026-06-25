@@ -14,6 +14,7 @@ import (
 	"famcscoin-backend/internal/hub"
 	"famcscoin-backend/internal/repository"
 	"famcscoin-backend/internal/worker"
+
 	"github.com/joho/godotenv"
 )
 
@@ -41,108 +42,9 @@ func main() {
 
 	// Запускаем миграции
 	// В реальном приложении пути к миграциям стоит передавать конфигом, либо эмбеддить
-	err = database.RunMigrations("./internal/db/migrations/0001_init.sql")
+	err = database.RunAllMigrations("./internal/db/migrations")
 	if err != nil {
-		log.Printf("Init migration error/skip: %v", err)
-	}
-	
-	err = database.RunMigrations("./internal/db/migrations/0002_seed_shop.sql")
-	if err != nil {
-		log.Printf("Seed migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0003_game_settings.sql")
-	if err != nil {
-		log.Printf("Settings migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0004_seed_squads.sql")
-	if err != nil {
-		log.Printf("Squads seed migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0005_dao_init.sql")
-	if err != nil {
-		log.Printf("DAO migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0006_user_avatars.sql")
-	if err != nil {
-		log.Printf("Avatars migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0007_tasks.sql")
-	if err != nil {
-		log.Printf("Tasks migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0008_sleep_mechanic.sql")
-	if err != nil {
-		log.Printf("Sleep migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0009_daily_quiz.sql")
-	if err != nil {
-		log.Printf("Quiz migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0010_referrals.sql")
-	if err != nil {
-		log.Printf("Referrals migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0011_squad_treasury.sql")
-	if err != nil {
-		log.Printf("Treasury migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0012_admin_audit.sql")
-	if err != nil {
-		log.Printf("Admin Audit migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0013_skins.sql")
-	if err != nil {
-		log.Printf("Skins migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0014_betting.sql")
-	if err != nil {
-		log.Printf("Betting migration error/skip: %v", err)
-	}
-	err = database.RunMigrations("./internal/db/migrations/0015_admin_invites.sql")
-	if err != nil {
-		log.Printf("Admin invites migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0016_hall_of_fame.sql")
-	if err != nil {
-		log.Printf("Hall of fame migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0017_rbac_permissions.sql")
-	if err != nil {
-		log.Printf("RBAC permissions migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0018_dao_moderation.sql")
-	if err != nil {
-		log.Printf("DAO moderation migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0019_crypto_transactions.sql")
-	if err != nil {
-		log.Printf("Crypto transactions migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0020_ban_system.sql")
-	if err != nil {
-		log.Printf("Ban system migration error/skip: %v", err)
-	}
-
-	err = database.RunMigrations("./internal/db/migrations/0021_indexes_and_cleanup.sql")
-	if err != nil {
-		log.Printf("Indexes migration error/skip: %v", err)
+		log.Printf("Migration execution error: %v", err)
 	}
 
 	// Загружаем настройки в кэш при старте

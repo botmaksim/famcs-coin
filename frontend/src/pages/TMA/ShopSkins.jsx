@@ -1,52 +1,54 @@
-import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import apiClient from '../../api/client';
-import { useUser } from '../../context/UserContext';
-import { Skeleton } from '../../components/Skeleton';
+import { ShopService } from '@/api/services/ShopService';
+import { useUser } from '@/context/UserContext';
+import { Skeleton } from '@/components/Skeleton';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const ShopSkins = () => {
   const { user, fetchProfile } = useUser();
-  const [skins, setSkins] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
 
-  const fetchSkins = async () => {
-    try {
-      const response = await apiClient.get('/shop/skins');
-      setSkins(response.data.skins || []);
-      setError(null);
-    } catch (err) {
-      console.error('Failed to fetch skins:', err);
-      setError('Не удалось загрузить скины');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: skinsData, isLoading: loading, error: skinsError } = useQuery({
+    queryKey: ['skins'],
+    queryFn: async () => {
+      const response = await ShopService.getSkins();
+      return response.data.skins || [];
+    },
+  });
 
-  useEffect(() => {
-    fetchSkins();
-  }, []);
+  const skins = skinsData || [];
+  const error = skinsError ? 'Не удалось загрузить скины' : null;
 
-  const handleBuy = async (skinId) => {
-    try {
-      await apiClient.post('/shop/skins/buy', { skin_id: skinId });
+  const buyMutation = useMutation({
+    mutationFn: (skinId) => ShopService.buySkin(skinId),
+    onSuccess: () => {
       toast.success('Скин успешно куплен!');
-      await fetchProfile();
-      await fetchSkins();
-    } catch (err) {
+      fetchProfile();
+      queryClient.invalidateQueries(['skins']);
+    },
+    onError: (err) => {
       toast.error(err.response?.data || 'Ошибка при покупке скина');
     }
-  };
+  });
 
-  const handleSelect = async (skinId) => {
-    try {
-      await apiClient.post('/shop/skins/active', { skin_id: skinId });
+  const selectMutation = useMutation({
+    mutationFn: (skinId) => ShopService.activateSkin(skinId),
+    onSuccess: () => {
       toast.success('Скин выбран!');
-      await fetchProfile();
-      await fetchSkins();
-    } catch (err) {
+      fetchProfile();
+      queryClient.invalidateQueries(['skins']);
+    },
+    onError: (err) => {
       toast.error(err.response?.data || 'Ошибка при выборе скина');
     }
+  });
+
+  const handleBuy = (skinId) => {
+    buyMutation.mutate(skinId);
+  };
+
+  const handleSelect = (skinId) => {
+    selectMutation.mutate(skinId);
   };
 
   if (loading) return (

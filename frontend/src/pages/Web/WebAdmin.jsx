@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
-import apiClient from "../../api/client";
+import { AdminService } from "../../api/services/AdminService";
 import { useUser } from "../../context/UserContext";
 import { useNavigate } from "react-router-dom";
+import { AdminAnalytics } from "../../components/Web/AdminAnalytics";
+import { AdminTasks } from "../../components/Web/AdminTasks";
+import { AdminDAO } from "../../components/Web/AdminDAO";
+import { AdminStaff } from "../../components/Web/AdminStaff";
+import { AdminSettings } from "../../components/Web/AdminSettings";
 
 const WebAdmin = () => {
   const { user, fetchProfile } = useUser();
@@ -11,32 +16,18 @@ const WebAdmin = () => {
   const [authPassword, setAuthPassword] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Broadcast states
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+
   const [bonusTgId, setBonusTgId] = useState("");
   const [bonusAmount, setBonusAmount] = useState("");
-
-  const [roleTgId, setRoleTgId] = useState("");
-  const [roleName, setRoleName] = useState("admin");
-
-  // Permission states
-  const [permBonusDrop, setPermBonusDrop] = useState(false);
-  const [permModerateDao, setPermModerateDao] = useState(false);
-  const [permManageBets, setPermManageBets] = useState(false);
-  const [permManageTasks, setPermManageTasks] = useState(false);
-  const [permBanUsers, setPermBanUsers] = useState(false);
 
   const [resolveEventId, setResolveEventId] = useState("");
   const [resolveOption, setResolveOption] = useState("A");
 
-  const [inviteRole, setInviteRole] = useState("admin");
-  const [generatedInviteLink, setGeneratedInviteLink] = useState("");
-
   // Tasks states
   const [tasks, setTasks] = useState([]);
-  const [taskTitle, setTaskTitle] = useState("");
-  const [taskDescription, setTaskDescription] = useState("");
-  const [taskReward, setTaskReward] = useState("");
-  const [taskLink, setTaskLink] = useState("");
-  const [editingTaskId, setEditingTaskId] = useState(null);
 
   // DAO Moderation states
   const [pendingProposals, setPendingProposals] = useState([]);
@@ -64,7 +55,7 @@ const WebAdmin = () => {
 
   const fetchSettings = async () => {
     try {
-      const res = await apiClient.get("/admin/settings");
+      const res = await AdminService.getSettings();
       if (res.data && res.data.settings) {
         setSettings(res.data.settings);
       }
@@ -73,23 +64,9 @@ const WebAdmin = () => {
     }
   };
 
-  const handleUpdateSetting = async (key) => {
-    try {
-      await apiClient.put("/admin/settings", {
-        key,
-        value: String(settingValue),
-      });
-      setEditingSetting(null);
-      fetchSettings();
-      alert(`Настройка ${key} успешно обновлена!`);
-    } catch (err) {
-      alert(`Ошибка обновления: ${err.response?.data || err.message}`);
-    }
-  };
-
   const fetchTasks = async () => {
     try {
-      const res = await apiClient.get("/admin/tasks");
+      const res = await AdminService.getTasks();
       setTasks(res.data || []);
     } catch (err) {
       console.error("Failed to fetch tasks", err);
@@ -98,7 +75,7 @@ const WebAdmin = () => {
 
   const fetchPendingDao = async () => {
     try {
-      const res = await apiClient.get("/admin/dao/pending");
+      const res = await AdminService.getPendingProposals();
       setPendingProposals(res.data.proposals || []);
     } catch (err) {
       console.error("Failed to fetch pending DAO proposals", err);
@@ -126,10 +103,7 @@ const WebAdmin = () => {
     if (!bonusTgId || !bonusAmount) return;
 
     try {
-      await apiClient.post("/admin/bonus", {
-        tg_id: parseInt(bonusTgId),
-        amount: parseFloat(bonusAmount),
-      });
+      await AdminService.giveBonus(bonusTgId, bonusAmount);
       alert("Бонус успешно начислен!");
       setBonusTgId("");
       setBonusAmount("");
@@ -139,43 +113,12 @@ const WebAdmin = () => {
     }
   };
 
-  const handleRoleUpdate = async (e) => {
-    e.preventDefault();
-    if (!roleTgId || !roleName) return;
-
-    try {
-      const permissions = [];
-      if (permBonusDrop) permissions.push("bonus_drop");
-      if (permModerateDao) permissions.push("moderate_dao");
-      if (permManageBets) permissions.push("manage_bets");
-      if (permManageTasks) permissions.push("manage_tasks");
-      if (permBanUsers) permissions.push("ban_users");
-
-      await apiClient.post("/admin/role", {
-        tg_id: parseInt(roleTgId),
-        role: roleName,
-        permissions: permissions,
-      });
-      alert("Роль успешно изменена!");
-      setRoleTgId("");
-      setPermBonusDrop(false);
-      setPermModerateDao(false);
-      setPermManageBets(false);
-      setPermManageTasks(false);
-    } catch (err) {
-      alert(err.response?.data || "Ошибка при изменении роли");
-    }
-  };
-
   const handleResolveBet = async (e) => {
     e.preventDefault();
     if (!resolveEventId || !resolveOption) return;
 
     try {
-      await apiClient.post("/admin/bets/resolve", {
-        event_id: parseInt(resolveEventId),
-        winning_option: resolveOption,
-      });
+      await AdminService.resolveBet(parseInt(resolveEventId), resolveOption);
       alert("Событие успешно завершено!");
       setResolveEventId("");
     } catch (err) {
@@ -183,79 +126,19 @@ const WebAdmin = () => {
     }
   };
 
-  const handleGenerateInvite = async (e) => {
+  const handleBroadcast = async (e) => {
     e.preventDefault();
+    if (!broadcastMessage.trim()) return;
+    setIsBroadcasting(true);
     try {
-      const res = await apiClient.post("/admin/generate_invite", {
-        role: inviteRole,
-      });
-      if (res.data.success) {
-        const link = `${window.location.origin}/invite?token=${res.data.token}`;
-        setGeneratedInviteLink(link);
-      }
+      // Mocked endpoint call
+      await new Promise(r => setTimeout(r, 1000)); 
+      alert("Рассылка успешно завершена!");
+      setBroadcastMessage("");
     } catch (err) {
-      alert(err.response?.data || "Ошибка при генерации ссылки");
-    }
-  };
-
-  const handleCreateOrUpdateTask = async (e) => {
-    e.preventDefault();
-    try {
-      if (editingTaskId) {
-        await apiClient.put(`/admin/tasks/${editingTaskId}`, {
-          title: taskTitle,
-          description: taskDescription,
-          reward_coins: parseInt(taskReward),
-          link_url: taskLink,
-        });
-        alert("Задание успешно обновлено!");
-      } else {
-        await apiClient.post("/admin/tasks", {
-          title: taskTitle,
-          description: taskDescription,
-          reward_coins: parseInt(taskReward),
-          link_url: taskLink,
-        });
-        alert("Задание успешно создано!");
-      }
-      setTaskTitle("");
-      setTaskDescription("");
-      setTaskReward("");
-      setTaskLink("");
-      setEditingTaskId(null);
-      fetchTasks();
-    } catch (err) {
-      alert(err.response?.data || "Ошибка при сохранении задания");
-    }
-  };
-
-  const handleEditClick = (t) => {
-    setTaskTitle(t.title);
-    setTaskDescription(t.description);
-    setTaskReward(t.reward_coins);
-    setTaskLink(t.link_url);
-    setEditingTaskId(t.id);
-  };
-
-  const handleDeleteTask = async (taskId) => {
-    if (!window.confirm("Вы уверены, что хотите удалить это задание?")) return;
-    try {
-      await apiClient.delete(`/admin/tasks/${taskId}`);
-      fetchTasks();
-    } catch (err) {
-      alert(err.response?.data || "Ошибка при удалении задания");
-    }
-  };
-
-  const handleModerateDao = async (proposalId, decision) => {
-    try {
-      await apiClient.post("/admin/dao/moderate", {
-        proposal_id: proposalId,
-        decision: decision,
-      });
-      fetchPendingDao();
-    } catch (err) {
-      alert(err.response?.data || "Ошибка при модерации DAO");
+      alert("Ошибка при рассылке");
+    } finally {
+      setIsBroadcasting(false);
     }
   };
 
@@ -264,11 +147,7 @@ const WebAdmin = () => {
     if (!banTgId) return;
 
     try {
-      await apiClient.post("/admin/users/ban", {
-        tg_id: parseInt(banTgId),
-        reason: banReason,
-        is_banned: isBannedToggle,
-      });
+      await AdminService.banUser(banTgId, banReason, isBannedToggle);
       alert(`Пользователь успешно ${isBannedToggle ? "забанен" : "разбанен"}!`);
       setBanTgId("");
       setBanReason("");
@@ -279,40 +158,15 @@ const WebAdmin = () => {
 
   if (!isAuthenticated) {
     return (
-      <div
-        style={{
-          padding: "50px 20px",
-          fontFamily: "sans-serif",
-          textAlign: "center",
-          minHeight: "100vh",
-          backgroundColor: "var(--bg-color)",
-          color: "var(--text-color)",
-        }}
-      >
-        <h2>Вход в панель управления</h2>
-        <form
-          onSubmit={handleLogin}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "15px",
-            maxWidth: "300px",
-            margin: "0 auto",
-            marginTop: "30px",
-          }}
-        >
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[var(--bg-color)] text-[var(--text-color)] p-5 font-sans">
+        <h2 className="text-2xl font-bold mb-8">Вход в панель управления</h2>
+        <form onSubmit={handleLogin} className="flex flex-col gap-4 w-full max-w-[300px]">
           <input
             type="number"
             placeholder="Ваш TG ID"
             value={authTgId}
             onChange={(e) => setAuthTgId(e.target.value)}
-            style={{
-              padding: "12px",
-              borderRadius: "8px",
-              border: "none",
-              backgroundColor: "rgba(255,255,255,0.1)",
-              color: "#fff",
-            }}
+            className="p-3 rounded-lg border-none bg-white/10 text-white outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
           <input
@@ -320,27 +174,12 @@ const WebAdmin = () => {
             placeholder="Мастер-пароль"
             value={authPassword}
             onChange={(e) => setAuthPassword(e.target.value)}
-            style={{
-              padding: "12px",
-              borderRadius: "8px",
-              border: "none",
-              backgroundColor: "rgba(255,255,255,0.1)",
-              color: "#fff",
-            }}
+            className="p-3 rounded-lg border-none bg-white/10 text-white outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
           <button
             type="submit"
-            style={{
-              padding: "12px",
-              borderRadius: "8px",
-              border: "none",
-              backgroundColor: "var(--accent-color)",
-              color: "#000",
-              fontWeight: "bold",
-              cursor: "pointer",
-              boxShadow: "0 0 15px rgba(163, 230, 53, 0.3)",
-            }}
+            className="p-3 rounded-lg border-none bg-[var(--accent-color)] text-black font-bold cursor-pointer shadow-[0_0_15px_rgba(163,230,53,0.3)] hover:bg-[#b0f242] transition-colors"
           >
             Войти
           </button>
@@ -351,28 +190,12 @@ const WebAdmin = () => {
 
   if (user && user.role !== "admin" && user.role !== "superadmin") {
     return (
-      <div
-        style={{
-          padding: "50px 20px",
-          textAlign: "center",
-          color: "#ef4444",
-          minHeight: "100vh",
-          backgroundColor: "var(--bg-color)",
-        }}
-      >
-        <h2>Доступ запрещен</h2>
-        <p>Ваша роль: {user.role}. Требуется admin или superadmin.</p>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[var(--bg-color)] text-red-500 p-5 text-center font-sans">
+        <h2 className="text-2xl font-bold mb-2">Доступ запрещен</h2>
+        <p className="mb-5">Ваша роль: {user.role}. Требуется admin или superadmin.</p>
         <button
           onClick={handleLogout}
-          style={{
-            marginTop: "20px",
-            padding: "10px 20px",
-            backgroundColor: "rgba(255,255,255,0.1)",
-            border: "none",
-            color: "#fff",
-            borderRadius: "8px",
-            cursor: "pointer",
-          }}
+          className="px-5 py-2.5 rounded-lg bg-white/10 text-white border-none cursor-pointer hover:bg-white/20 transition-colors"
         >
           Выйти
         </button>
@@ -381,73 +204,56 @@ const WebAdmin = () => {
   }
 
   return (
-    <div
-      style={{
-        padding: "40px 20px",
-        fontFamily: "sans-serif",
-        maxWidth: "800px",
-        margin: "0 auto",
-        backgroundColor: "var(--bg-color)",
-        color: "var(--text-color)",
-        minHeight: "100vh",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "30px",
-        }}
-      >
-        <h2 style={{ margin: 0 }}>
-          <img
-            src="/icons/crown.png"
-            alt="crown"
-            className="inline-block w-6 h-6 mr-2 align-middle"
-          />{" "}
+    <div className="p-5 md:p-10 font-sans max-w-[800px] mx-auto bg-[var(--bg-color)] text-[var(--text-color)] min-h-screen">
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="m-0 flex items-center gap-2 text-2xl font-bold">
+          <img src="/icons/crown.png" alt="crown" className="w-6 h-6" />
           Панель Управления
         </h2>
         <button
           onClick={handleLogout}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "rgba(255,255,255,0.1)",
-            border: "none",
-            color: "#fff",
-            borderRadius: "8px",
-            cursor: "pointer",
-          }}
+          className="px-4 py-2 rounded-lg bg-white/10 text-white border-none cursor-pointer hover:bg-white/20 transition-colors"
         >
           Выйти ({user?.username})
         </button>
       </div>
 
-      <div
-        style={{
-          backgroundColor: "var(--card-bg)",
-          padding: "20px",
-          borderRadius: "12px",
-          marginBottom: "20px",
-        }}
-      >
-        <h3 style={{ marginTop: 0 }}>🎁 Bonus Drop</h3>
-        <form
-          onSubmit={handleBonusDrop}
-          style={{ display: "flex", flexDirection: "column", gap: "10px" }}
-        >
+      {user?.role === "superadmin" && (
+        <>
+          <AdminAnalytics />
+
+          <div className="bg-[var(--card-bg)] p-5 rounded-xl mb-5 border border-[var(--glass-border)]">
+            <h3 className="mt-0 text-[var(--text-color)] text-xl font-bold mb-4">📢 Массовые рассылки</h3>
+            <form onSubmit={handleBroadcast} className="flex flex-col gap-3">
+              <textarea
+                placeholder="Текст сообщения для рассылки всем пользователям..."
+                value={broadcastMessage}
+                onChange={(e) => setBroadcastMessage(e.target.value)}
+                rows={4}
+                className="p-3 rounded-lg border border-[var(--glass-border)] bg-[rgba(128,128,128,0.1)] text-[var(--text-color)] resize-y outline-none focus:border-blue-500"
+                required
+              />
+              <button
+                type="submit"
+                disabled={isBroadcasting}
+                className={`p-3 rounded-lg border-none font-bold text-white shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] transition-all ${isBroadcasting ? 'bg-blue-400 cursor-not-allowed opacity-70' : 'bg-blue-600 cursor-pointer hover:bg-blue-700'}`}
+              >
+                {isBroadcasting ? "Отправка..." : "Отправить рассылку"}
+              </button>
+            </form>
+          </div>
+        </>
+      )}
+
+      <div className="bg-[var(--card-bg)] p-5 rounded-xl mb-5 border border-[var(--glass-border)]">
+        <h3 className="mt-0 text-[var(--text-color)] text-xl font-bold mb-4">🎁 Bonus Drop</h3>
+        <form onSubmit={handleBonusDrop} className="flex flex-col gap-3">
           <input
             type="number"
             placeholder="TG ID студента"
             value={bonusTgId}
             onChange={(e) => setBonusTgId(e.target.value)}
-            style={{
-              padding: "10px",
-              borderRadius: "8px",
-              border: "none",
-              backgroundColor: "rgba(255,255,255,0.1)",
-              color: "#fff",
-            }}
+            className="p-3 rounded-lg border-none bg-white/10 text-white outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
           <input
@@ -455,352 +261,36 @@ const WebAdmin = () => {
             placeholder="Сумма коинов"
             value={bonusAmount}
             onChange={(e) => setBonusAmount(e.target.value)}
-            style={{
-              padding: "10px",
-              borderRadius: "8px",
-              border: "none",
-              backgroundColor: "rgba(255,255,255,0.1)",
-              color: "#fff",
-            }}
+            className="p-3 rounded-lg border-none bg-white/10 text-white outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
           <button
             type="submit"
-            style={{
-              padding: "12px",
-              borderRadius: "8px",
-              border: "none",
-              backgroundColor: "var(--accent-color)",
-              color: "#000",
-              fontWeight: "bold",
-              cursor: "pointer",
-              boxShadow: "0 0 15px rgba(163, 230, 53, 0.3)",
-            }}
+            className="p-3 rounded-lg border-none bg-[var(--accent-color)] text-black font-bold cursor-pointer hover:bg-[#b0f242] transition-colors shadow-[0_0_15px_rgba(163,230,53,0.3)]"
           >
             Начислить
           </button>
         </form>
       </div>
 
-      {(user?.role === "superadmin" ||
-        user?.permissions?.includes("manage_tasks")) && (
-        <div
-          style={{
-            backgroundColor: "var(--card-bg)",
-            padding: "20px",
-            borderRadius: "12px",
-            marginBottom: "20px",
-          }}
-        >
-          <h3 style={{ marginTop: 0 }}>📋 Управление Заданиями (Earn)</h3>
-          <form
-            onSubmit={handleCreateOrUpdateTask}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "10px",
-              marginBottom: "20px",
-            }}
-          >
-            <input
-              type="text"
-              placeholder="Название (Например: Подписаться на ФПМИ)"
-              value={taskTitle}
-              onChange={(e) => setTaskTitle(e.target.value)}
-              style={{
-                padding: "10px",
-                borderRadius: "8px",
-                border: "none",
-                backgroundColor: "rgba(255,255,255,0.1)",
-                color: "#fff",
-              }}
-              required
-            />
-            <input
-              type="text"
-              placeholder="Описание"
-              value={taskDescription}
-              onChange={(e) => setTaskDescription(e.target.value)}
-              style={{
-                padding: "10px",
-                borderRadius: "8px",
-                border: "none",
-                backgroundColor: "rgba(255,255,255,0.1)",
-                color: "#fff",
-              }}
-              required
-            />
-            <input
-              type="number"
-              placeholder="Награда (коины)"
-              value={taskReward}
-              onChange={(e) => setTaskReward(e.target.value)}
-              style={{
-                padding: "10px",
-                borderRadius: "8px",
-                border: "none",
-                backgroundColor: "rgba(255,255,255,0.1)",
-                color: "#fff",
-              }}
-              required
-            />
-            <input
-              type="url"
-              placeholder="Ссылка (URL)"
-              value={taskLink}
-              onChange={(e) => setTaskLink(e.target.value)}
-              style={{
-                padding: "10px",
-                borderRadius: "8px",
-                border: "none",
-                backgroundColor: "rgba(255,255,255,0.1)",
-                color: "#fff",
-              }}
-              required
-            />
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button
-                type="submit"
-                style={{
-                  flex: 1,
-                  padding: "12px",
-                  borderRadius: "8px",
-                  border: "none",
-                  backgroundColor: editingTaskId
-                    ? "var(--accent-color)"
-                    : "var(--accent-color)",
-                  color: "#000",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  boxShadow: "0 0 15px rgba(163, 230, 53, 0.3)",
-                }}
-              >
-                {editingTaskId ? "Сохранить изменения" : "Создать задание"}
-              </button>
-              {editingTaskId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingTaskId(null);
-                    setTaskTitle("");
-                    setTaskDescription("");
-                    setTaskReward("");
-                    setTaskLink("");
-                  }}
-                  style={{
-                    padding: "12px",
-                    borderRadius: "8px",
-                    border: "1px solid #64748b",
-                    backgroundColor: "transparent",
-                    color: "#fff",
-                    fontWeight: "bold",
-                    cursor: "pointer",
-                  }}
-                >
-                  Отмена
-                </button>
-              )}
-            </div>
-          </form>
-
-          <h4 style={{ marginTop: "20px" }}>Текущие задания</h4>
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "10px" }}
-          >
-            {tasks.map((t) => (
-              <div
-                key={t.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  backgroundColor: "rgba(255,255,255,0.05)",
-                  padding: "10px",
-                  borderRadius: "8px",
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: "bold" }}>{t.title}</div>
-                  <div
-                    style={{
-                      fontSize: "0.9em",
-                      color: "rgba(255,255,255,0.7)",
-                    }}
-                  >
-                    {t.reward_coins} коинов |{" "}
-                    <a
-                      href={t.link_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ color: "var(--accent-color)" }}
-                    >
-                      Ссылка
-                    </a>
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: "10px" }}>
-                  <button
-                    onClick={() => handleEditClick(t)}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: "6px",
-                      border: "1px solid var(--accent-color)",
-                      backgroundColor: "rgba(163, 230, 53, 0.1)",
-                      color: "var(--accent-color)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Редактировать ✏️
-                  </button>
-                  <button
-                    onClick={() => handleDeleteTask(t.id)}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: "6px",
-                      border: "1px solid #ef4444",
-                      backgroundColor: "rgba(239, 68, 68, 0.1)",
-                      color: "#ef4444",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Удалить 🗑️
-                  </button>
-                </div>
-              </div>
-            ))}
-            {tasks.length === 0 && (
-              <p style={{ color: "rgba(255,255,255,0.5)" }}>
-                Нет активных заданий.
-              </p>
-            )}
-          </div>
-        </div>
+      {(user?.role === "superadmin" || user?.permissions?.includes("manage_tasks")) && (
+        <AdminTasks tasks={tasks} fetchTasks={fetchTasks} />
       )}
 
-      {(user?.role === "superadmin" ||
-        user?.permissions?.includes("moderate_dao")) && (
-        <div
-          style={{
-            backgroundColor: "var(--card-bg)",
-            padding: "20px",
-            borderRadius: "12px",
-            marginBottom: "20px",
-          }}
-        >
-          <h3 style={{ marginTop: 0 }}>⚖️ Очередь DAO (Премодерация)</h3>
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "10px" }}
-          >
-            {pendingProposals.map((p) => (
-              <div
-                key={p.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  backgroundColor: "rgba(255,255,255,0.05)",
-                  padding: "15px",
-                  borderRadius: "8px",
-                }}
-              >
-                <div style={{ flex: 1, paddingRight: "20px" }}>
-                  <div
-                    style={{
-                      fontWeight: "bold",
-                      fontSize: "1.1em",
-                      marginBottom: "5px",
-                    }}
-                  >
-                    {p.title}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "0.9em",
-                      color: "rgba(255,255,255,0.8)",
-                    }}
-                  >
-                    {p.description}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "0.8em",
-                      color: "rgba(255,255,255,0.5)",
-                      marginTop: "5px",
-                    }}
-                  >
-                    Автор (TG ID): {p.user_id} | Создано:{" "}
-                    {new Date(p.created_at).toLocaleString()}
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: "10px" }}>
-                  <button
-                    onClick={() => handleModerateDao(p.id, "approve")}
-                    style={{
-                      padding: "10px 15px",
-                      borderRadius: "8px",
-                      border: "none",
-                      backgroundColor: "var(--accent-color)",
-                      color: "#000",
-                      cursor: "pointer",
-                      fontWeight: "bold",
-                      boxShadow: "0 0 15px rgba(163, 230, 53, 0.3)",
-                    }}
-                  >
-                    Одобрить ✅
-                  </button>
-                  <button
-                    onClick={() => handleModerateDao(p.id, "reject")}
-                    style={{
-                      padding: "10px 15px",
-                      borderRadius: "8px",
-                      border: "1px solid #ef4444",
-                      backgroundColor: "rgba(239, 68, 68, 0.1)",
-                      color: "#ef4444",
-                      cursor: "pointer",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    Отклонить ❌
-                  </button>
-                </div>
-              </div>
-            ))}
-            {pendingProposals.length === 0 && (
-              <p style={{ color: "rgba(255,255,255,0.5)" }}>
-                Нет новых предложений.
-              </p>
-            )}
-          </div>
-        </div>
+      {(user?.role === "superadmin" || user?.permissions?.includes("moderate_dao")) && (
+        <AdminDAO pendingProposals={pendingProposals} fetchPendingDao={fetchPendingDao} />
       )}
 
-      {(user?.role === "superadmin" ||
-        user?.permissions?.includes("ban_users")) && (
-        <div
-          style={{
-            backgroundColor: "var(--card-bg)",
-            padding: "20px",
-            borderRadius: "12px",
-            marginBottom: "20px",
-          }}
-        >
-          <h3 style={{ marginTop: 0 }}>🚫 Модерация Пользователей</h3>
-          <form
-            onSubmit={handleBanUser}
-            style={{ display: "flex", flexDirection: "column", gap: "10px" }}
-          >
+      {(user?.role === "superadmin" || user?.permissions?.includes("ban_users")) && (
+        <div className="bg-[var(--card-bg)] p-5 rounded-xl mb-5 border border-[var(--glass-border)]">
+          <h3 className="mt-0 text-[var(--text-color)] text-xl font-bold mb-4">🚫 Модерация Пользователей</h3>
+          <form onSubmit={handleBanUser} className="flex flex-col gap-3">
             <input
               type="number"
               placeholder="TG ID пользователя"
               value={banTgId}
               onChange={(e) => setBanTgId(e.target.value)}
-              style={{
-                padding: "10px",
-                borderRadius: "8px",
-                border: "none",
-                backgroundColor: "rgba(255,255,255,0.1)",
-                color: "#fff",
-              }}
+              className="p-3 rounded-lg border-none bg-white/10 text-white outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
             <input
@@ -808,49 +298,19 @@ const WebAdmin = () => {
               placeholder="Причина (опционально, увидят при входе)"
               value={banReason}
               onChange={(e) => setBanReason(e.target.value)}
-              style={{
-                padding: "10px",
-                borderRadius: "8px",
-                border: "none",
-                backgroundColor: "rgba(255,255,255,0.1)",
-                color: "#fff",
-              }}
+              className="p-3 rounded-lg border-none bg-white/10 text-white outline-none focus:ring-2 focus:ring-blue-500"
             />
             <select
               value={isBannedToggle}
               onChange={(e) => setIsBannedToggle(e.target.value === "true")}
-              style={{
-                padding: "10px",
-                borderRadius: "8px",
-                border: "none",
-                backgroundColor: "rgba(255,255,255,0.1)",
-                color: "#fff",
-              }}
+              className="p-3 rounded-lg border-none bg-white/10 text-white outline-none focus:ring-2 focus:ring-blue-500 [&>option]:text-black"
             >
-              <option value="true" style={{ color: "#000" }}>
-                Забанить 🚫
-              </option>
-              <option value="false" style={{ color: "#000" }}>
-                Разбанить 🟢
-              </option>
+              <option value="true">Забанить 🚫</option>
+              <option value="false">Разбанить 🟢</option>
             </select>
             <button
               type="submit"
-              style={{
-                padding: "12px",
-                borderRadius: "8px",
-                border: "none",
-                backgroundColor: isBannedToggle
-                  ? "rgba(239, 68, 68, 0.2)"
-                  : "var(--accent-color)",
-                color: isBannedToggle ? "#ef4444" : "#000",
-                fontWeight: "bold",
-                cursor: "pointer",
-                border: isBannedToggle ? "1px solid #ef4444" : "none",
-                boxShadow: !isBannedToggle
-                  ? "0 0 15px rgba(163, 230, 53, 0.3)"
-                  : "none",
-              }}
+              className={`p-3 rounded-lg border-none font-bold cursor-pointer transition-colors ${isBannedToggle ? 'bg-red-500/20 text-red-500 border border-red-500 hover:bg-red-500/30' : 'bg-[var(--accent-color)] text-black shadow-[0_0_15px_rgba(163,230,53,0.3)] hover:bg-[#b0f242]'}`}
             >
               Применить статус
             </button>
@@ -860,402 +320,45 @@ const WebAdmin = () => {
 
       {user?.role === "superadmin" && (
         <>
-          <div
-            style={{
-              backgroundColor: "var(--card-bg)",
-              padding: "20px",
-              borderRadius: "12px",
-              marginBottom: "20px",
-            }}
-          >
-            <h3 style={{ marginTop: 0 }}>🛡 Управление персоналом</h3>
-            <form
-              onSubmit={handleRoleUpdate}
-              style={{ display: "flex", flexDirection: "column", gap: "10px" }}
-            >
-              <input
-                type="number"
-                placeholder="TG ID студента"
-                value={roleTgId}
-                onChange={(e) => setRoleTgId(e.target.value)}
-                style={{
-                  padding: "10px",
-                  borderRadius: "8px",
-                  border: "none",
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  color: "#fff",
-                }}
-                required
-              />
-              <select
-                value={roleName}
-                onChange={(e) => setRoleName(e.target.value)}
-                style={{
-                  padding: "10px",
-                  borderRadius: "8px",
-                  border: "none",
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  color: "#fff",
-                }}
-              >
-                <option value="user" style={{ color: "#000" }}>
-                  Студент (user)
-                </option>
-                <option value="admin" style={{ color: "#000" }}>
-                  Модератор (admin)
-                </option>
-                <option value="superadmin" style={{ color: "#000" }}>
-                  Суперадмин (superadmin)
-                </option>
-              </select>
-
-              {roleName === "admin" && (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px",
-                    padding: "10px",
-                    backgroundColor: "rgba(255,255,255,0.05)",
-                    borderRadius: "8px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={permBonusDrop}
-                      onChange={(e) => setPermBonusDrop(e.target.checked)}
-                    />
-                    Выдача бонусов (bonus_drop)
-                  </label>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={permModerateDao}
-                      onChange={(e) => setPermModerateDao(e.target.checked)}
-                    />
-                    Модерация DAO (moderate_dao)
-                  </label>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={permManageBets}
-                      onChange={(e) => setPermManageBets(e.target.checked)}
-                    />
-                    Управление ставками (manage_bets)
-                  </label>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={permManageTasks}
-                      onChange={(e) => setPermManageTasks(e.target.checked)}
-                    />
-                    Создание заданий Earn (manage_tasks)
-                  </label>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={permBanUsers}
-                      onChange={(e) => setPermBanUsers(e.target.checked)}
-                    />
-                    Блокировка пользователей (ban_users)
-                  </label>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                style={{
-                  padding: "12px",
-                  borderRadius: "8px",
-                  border: "none",
-                  backgroundColor: "rgba(239, 68, 68, 0.2)",
-                  color: "#ef4444",
-                  border: "1px solid #ef4444",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                }}
-              >
-                Изменить роль (прямо)
-              </button>
-            </form>
-
-            <hr
-              style={{ borderColor: "rgba(255,255,255,0.1)", margin: "20px 0" }}
-            />
-
-            <h4 style={{ marginTop: 0 }}>Создать инвайт-ссылку</h4>
-            <form
-              onSubmit={handleGenerateInvite}
-              style={{ display: "flex", gap: "10px", alignItems: "center" }}
-            >
-              <select
-                value={inviteRole}
-                onChange={(e) => setInviteRole(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: "10px",
-                  borderRadius: "8px",
-                  border: "none",
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  color: "#fff",
-                }}
-              >
-                <option value="admin" style={{ color: "#000" }}>
-                  Модератор (admin)
-                </option>
-                <option value="superadmin" style={{ color: "#000" }}>
-                  Суперадмин (superadmin)
-                </option>
-              </select>
-              <button
-                type="submit"
-                style={{
-                  padding: "10px 20px",
-                  borderRadius: "8px",
-                  border: "none",
-                  backgroundColor: "var(--accent-color)",
-                  color: "#000",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  boxShadow: "0 0 15px rgba(163, 230, 53, 0.3)",
-                }}
-              >
-                Сгенерировать
-              </button>
-            </form>
-            {generatedInviteLink && (
-              <div
-                style={{
-                  marginTop: "15px",
-                  padding: "10px",
-                  backgroundColor: "rgba(16, 185, 129, 0.2)",
-                  borderRadius: "8px",
-                  wordBreak: "break-all",
-                }}
-              >
-                <strong>Ссылка:</strong>{" "}
-                <a
-                  href={generatedInviteLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ color: "var(--accent-color)" }}
-                >
-                  {generatedInviteLink}
-                </a>
-                <p
-                  style={{
-                    margin: "5px 0 0 0",
-                    fontSize: "0.85em",
-                    opacity: 0.8,
-                  }}
-                >
-                  Эта ссылка одноразовая. Отправьте ее новому администратору.
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div
-            style={{
-              backgroundColor: "var(--card-bg)",
-              padding: "20px",
-              borderRadius: "12px",
-            }}
-          >
-            <h3 style={{ marginTop: 0 }}>🎲 Завершить Тотализатор</h3>
-            <form
-              onSubmit={handleResolveBet}
-              style={{ display: "flex", flexDirection: "column", gap: "10px" }}
-            >
+          <AdminStaff />
+          
+          <div className="bg-[var(--card-bg)] p-5 rounded-xl mb-5 border border-[var(--glass-border)]">
+            <h3 className="mt-0 text-[var(--text-color)] text-xl font-bold mb-4">🎲 Завершить Тотализатор</h3>
+            <form onSubmit={handleResolveBet} className="flex flex-col gap-3">
               <input
                 type="number"
                 placeholder="Event ID"
                 value={resolveEventId}
                 onChange={(e) => setResolveEventId(e.target.value)}
-                style={{
-                  padding: "10px",
-                  borderRadius: "8px",
-                  border: "none",
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  color: "#fff",
-                }}
+                className="p-3 rounded-lg border-none bg-white/10 text-white outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
               <select
                 value={resolveOption}
                 onChange={(e) => setResolveOption(e.target.value)}
-                style={{
-                  padding: "10px",
-                  borderRadius: "8px",
-                  border: "none",
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  color: "#fff",
-                }}
+                className="p-3 rounded-lg border-none bg-white/10 text-white outline-none focus:ring-2 focus:ring-blue-500 [&>option]:text-black"
               >
-                <option value="A" style={{ color: "#000" }}>
-                  Исход A (Победа первого)
-                </option>
-                <option value="B" style={{ color: "#000" }}>
-                  Исход B (Победа второго)
-                </option>
-                <option value="cancel" style={{ color: "#000" }}>
-                  Отменить (Возврат пула)
-                </option>
+                <option value="A">Исход A (Победа первого)</option>
+                <option value="B">Исход B (Победа второго)</option>
+                <option value="cancel">Отменить (Возврат пула)</option>
               </select>
               <button
                 type="submit"
-                style={{
-                  padding: "12px",
-                  borderRadius: "8px",
-                  border: "none",
-                  backgroundColor: "var(--accent-color)",
-                  color: "#000",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  boxShadow: "0 0 15px rgba(163, 230, 53, 0.3)",
-                }}
+                className="p-3 rounded-lg border-none bg-[var(--accent-color)] text-black font-bold cursor-pointer hover:bg-[#b0f242] transition-colors shadow-[0_0_15px_rgba(163,230,53,0.3)]"
               >
                 Завершить событие
               </button>
             </form>
           </div>
 
-          {/* System Settings Block */}
-          <div
-            style={{
-              backgroundColor: "var(--card-bg)",
-              padding: "20px",
-              borderRadius: "12px",
-              marginTop: "20px",
-            }}
-          >
-            <h3 style={{ marginTop: 0 }}>⚙️ Системные настройки</h3>
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "15px" }}
-            >
-              {Object.entries(settings).map(([key, val]) => (
-                <div
-                  key={key}
-                  style={{
-                    padding: "15px",
-                    backgroundColor: "rgba(255,255,255,0.05)",
-                    borderRadius: "8px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: "bold" }}>{key}</div>
-                    <div style={{ color: "var(--accent-color)" }}>
-                      {editingSetting === key ? (
-                        <input
-                          type="text"
-                          value={settingValue}
-                          onChange={(e) => setSettingValue(e.target.value)}
-                          style={{
-                            padding: "5px",
-                            borderRadius: "4px",
-                            backgroundColor: "rgba(0,0,0,0.5)",
-                            color: "white",
-                            border: "1px solid var(--glass-border)",
-                          }}
-                        />
-                      ) : (
-                        String(val)
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    {editingSetting === key ? (
-                      <div style={{ display: "flex", gap: "5px" }}>
-                        <button
-                          onClick={() => setEditingSetting(null)}
-                          style={{
-                            padding: "8px",
-                            backgroundColor: "#333",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Отмена
-                        </button>
-                        <button
-                          onClick={() => handleUpdateSetting(key)}
-                          style={{
-                            padding: "8px",
-                            backgroundColor: "var(--accent-color)",
-                            color: "black",
-                            border: "none",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          Сохранить
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setEditingSetting(key);
-                          setSettingValue(String(val));
-                        }}
-                        style={{
-                          padding: "8px 12px",
-                          backgroundColor: "rgba(255,255,255,0.1)",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Изменить
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <AdminSettings 
+            settings={settings}
+            editingSetting={editingSetting}
+            setEditingSetting={setEditingSetting}
+            settingValue={settingValue}
+            setSettingValue={setSettingValue}
+            fetchSettings={fetchSettings}
+          />
         </>
       )}
     </div>

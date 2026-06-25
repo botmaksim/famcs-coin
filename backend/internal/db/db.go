@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"sort"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -43,7 +45,7 @@ func NewDB(databaseURL string) (*DB, error) {
 	return &DB{Pool: pool}, nil
 }
 
-// RunMigrations runs the initial migration script
+// RunMigrations runs a single migration script
 func (db *DB) RunMigrations(migrationPath string) error {
 	content, err := os.ReadFile(migrationPath)
 	if err != nil {
@@ -52,10 +54,37 @@ func (db *DB) RunMigrations(migrationPath string) error {
 
 	_, err = db.Pool.Exec(context.Background(), string(content))
 	if err != nil {
-		return fmt.Errorf("unable to execute migration script: %w", err)
+		return fmt.Errorf("unable to execute migration script %s: %w", migrationPath, err)
 	}
 
-	log.Println("Migrations executed successfully")
+	log.Printf("Migration executed successfully: %s\n", migrationPath)
+	return nil
+}
+
+// RunAllMigrations reads a directory, sorts the SQL files and runs them sequentially.
+func (db *DB) RunAllMigrations(migrationsDir string) error {
+	entries, err := os.ReadDir(migrationsDir)
+	if err != nil {
+		return fmt.Errorf("unable to read migrations directory: %w", err)
+	}
+
+	var files []string
+	for _, entry := range entries {
+		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".sql" {
+			files = append(files, entry.Name())
+		}
+	}
+
+	sort.Strings(files)
+
+	for _, file := range files {
+		migrationPath := filepath.Join(migrationsDir, file)
+		if err := db.RunMigrations(migrationPath); err != nil {
+			return err
+		}
+	}
+
+	log.Println("All migrations executed successfully")
 	return nil
 }
 

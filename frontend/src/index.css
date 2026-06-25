@@ -10,11 +10,21 @@
   --glass-border: rgba(0, 0, 0, 0.05);
 }
 
+.dark {
+  --bg-color: #0f172a; /* Slate 900 */
+  --text-color: #f8fafc; /* Slate 50 */
+  --secondary-bg: #1e293b; /* Slate 800 */
+  --accent-color: #3b82f6; /* Blue 500 */
+  --accent-hover: #60a5fa; /* Blue 400 */
+  --card-bg: rgba(30, 41, 59, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.05);
+}
+
 body {
   margin: 0;
   padding: 0;
   font-family: var(--font-family);
-  background-color: #f1f5f9; /* Pure light background */
+  background-color: var(--bg-color); 
   color: var(--text-color);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -38,8 +48,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #333;
+  background: #cbd5e1;
   border-radius: 10px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--accent-color);
@@ -85,6 +98,11 @@ button:active {
   -webkit-tap-highlight-color: transparent;
 }
 
+.dark .tap-button {
+  background: radial-gradient(circle at 30% 30%, #1e3a8a, #172554);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(255, 255, 255, 0.1);
+}
+
 .tap-button:active {
   transform: scale(0.92);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), inset 0 0 50px rgba(0, 0, 0, 0.1);
@@ -101,6 +119,6 @@ button:active {
 
 /* Base Headings */
 h1, h2, h3, h4, h5, h6 {
-  color: #0f172a;
+  color: var(--text-color);
   letter-spacing: 0.5px;
 }

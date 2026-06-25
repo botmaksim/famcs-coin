@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useUser } from '../../context/UserContext';
-import apiClient from '../../api/client';
+import { UserService } from '../../api/services/UserService';
 import { Skeleton } from '../../components/Skeleton';
+import { playTapSound } from '../../utils/audio';
 
 const Terminal = () => {
-  const { user, updateLocalUser, loading, error, fetchProfile } = useUser();
+  const { user, updateLocalUser, loading, error, fetchProfile, soundEnabled } = useUser();
   
   const [isSleeping, setIsSleeping] = useState(false);
   const [canSleep, setCanSleep] = useState(false);
@@ -43,7 +44,7 @@ const Terminal = () => {
 
   const handleSleep = async () => {
     try {
-      await apiClient.post('/user/sleep');
+      await UserService.sleep();
       await fetchProfile();
     } catch (err) {
       alert('Не удалось уложить коины: ' + (err.response?.data || err.message));
@@ -56,6 +57,8 @@ const Terminal = () => {
 
   const handleClick = (e) => {
     if (user.energy < 1) return;
+
+    playTapSound(soundEnabled);
 
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -91,7 +94,7 @@ const Terminal = () => {
     pendingClicksRef.current = 0;
 
     try {
-      await apiClient.post('/user/click', { count: clicksToSync });
+      await UserService.click(clicksToSync);
     } catch (err) {
       console.error('Failed to sync clicks', err);
     }
@@ -102,7 +105,7 @@ const Terminal = () => {
       if (syncTimeoutRef.current) {
         clearTimeout(syncTimeoutRef.current);
         if (pendingClicksRef.current > 0) {
-           apiClient.post('/user/click', { count: pendingClicksRef.current }).catch(() => {});
+           UserService.click(pendingClicksRef.current).catch(() => {});
         }
       }
     };
@@ -117,38 +120,40 @@ const Terminal = () => {
       </div>
     </div>
   );
-  if (error) return <div className="text-center pt-12 text-red-500">Ошибка: {error}</div>;
+  if (error) return <div className="text-center pt-12 text-red-500 font-medium">{error}</div>;
 
   return (
     <div className="flex flex-col h-full p-5">
 
       {/* Energy Bar area */}
-      <div className="text-center mb-5">
+      <div className="text-center mb-6">
         <div className="text-lg font-bold mb-2 flex justify-center items-center">
-          <img src="/icons/energy.png" alt="energy" className="w-5 h-5 mr-1" /> {user.energy} <span className="text-slate-600 text-sm ml-1">/ {user.maxEnergy}</span>
+          <img src="/icons/energy.png" alt="energy" className="w-5 h-5 mr-1 drop-shadow-sm" /> 
+          <span className="text-[var(--text-color)]">{user.energy}</span>
+          <span className="text-slate-500 text-sm ml-1 font-medium">/ {user.maxEnergy}</span>
         </div>
-        <div className="w-full h-2.5 bg-white rounded-full overflow-hidden">
+        <div className="w-full h-3 bg-slate-200 dark:bg-slate-800/50 rounded-full overflow-hidden shadow-inner border border-white/20 dark:border-slate-800">
           <div 
-            className="h-full bg-blue-600 text-white transition-all duration-100 ease-out"
+            className="h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-100 ease-out"
             style={{ width: `${Math.min(100, (user.energy / user.maxEnergy) * 100)}%` }}
           ></div>
         </div>
       </div>
 
       {/* Main Clicker Area */}
-      <div className="flex-1 flex justify-center items-center flex-col gap-5">
+      <div className="flex-1 flex justify-center items-center flex-col gap-8">
         
         {!isSleeping && canSleep && (
           <button 
             onClick={handleSleep}
-            className="px-8 py-4 rounded-2xl border-none bg-blue-600 text-white font-bold text-base cursor-pointer shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] animate-pulse"
+            className="px-8 py-4 rounded-2xl border-none bg-blue-600 text-white font-bold text-base cursor-pointer shadow-[0_4px_20px_0_rgba(37,99,235,0.4)] animate-pulse"
           >
             Уложить коины спать (Буст х1.5 на 8 часов)
           </button>
         )}
 
         {isSleeping ? (
-          <div className="text-5xl font-bold text-slate-600 animate-pulse drop-shadow-[0_0_20px_rgba(148,163,184,0.5)]">
+          <div className="text-5xl font-bold text-slate-400 dark:text-slate-500 animate-pulse drop-shadow-sm">
             Zzz...
           </div>
         ) : (
@@ -157,11 +162,11 @@ const Terminal = () => {
                 {clicks.map((click) => (
                   <motion.div
                     key={click.id}
-                    initial={{ opacity: 1, y: click.y - 10, x: click.x - 20 }}
-                    animate={{ opacity: 0, y: click.y - 100 }}
+                    initial={{ opacity: 1, y: click.y - 10, x: click.x - 20, scale: 0.8 }}
+                    animate={{ opacity: 0, y: click.y - 120, scale: 1.5 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 1, ease: 'easeOut' }}
-                    className="absolute text-2xl font-bold text-black pointer-events-none select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] z-10"
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    className="absolute text-3xl font-black text-blue-600 drop-shadow-[0_2px_10px_rgba(255,255,255,0.5)] dark:text-white dark:drop-shadow-[0_2px_10px_rgba(37,99,235,0.8)] pointer-events-none select-none z-10"
                   >
                     +1
                   </motion.div>
@@ -171,7 +176,7 @@ const Terminal = () => {
              <img 
               src={user.active_skin_url || "/logo.png"} 
               alt="TAP" 
-              className="w-full h-full max-w-[200px] object-cover rounded-full overflow-hidden relative z-0"
+              className="w-[85%] h-[85%] object-cover rounded-full overflow-hidden relative z-0 transition-transform duration-75"
               onError={(e) => {
                 e.target.style.display = 'none';
                 e.target.parentNode.innerHTML = '<span class="text-[40px] font-bold pointer-events-none drop-shadow-[0_2px_5px_rgba(0,0,0,0.5)] relative z-0">TAP!</span>';
