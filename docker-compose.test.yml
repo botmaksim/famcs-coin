@@ -22,13 +22,9 @@ services:
       dockerfile: Dockerfile
     restart: always
     environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-postgres}
-      - DB_NAME=${DB_NAME:-famcs_coin}
-      - TG_BOT_TOKEN=${TG_BOT_TOKEN}
-      - PORT=8083
+      - DATABASE_URL=postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-famcs_coin}?sslmode=disable
+      - TELEGRAM_BOT_TOKEN=${TG_BOT_TOKEN}
+      - BACKEND_PORT=8083
     depends_on:
       db:
         condition: service_healthy
