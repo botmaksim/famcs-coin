@@ -1,74 +1,78 @@
--- 1. Таблица сквадов (Вертикальных групп, сквозных через курсы)
-CREATE TABLE IF NOT EXISTS squads (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50) UNIQUE NOT NULL,             -- Например, "11 группа"
-    total_points NUMERIC(20, 2) DEFAULT 0.00,     -- Общий исторический счет группы
-    pool_balance NUMERIC(20, 2) DEFAULT 0.00,    -- Текущий баланс общака на буст
-    pool_target NUMERIC(20, 2) DEFAULT 50000.00, -- Сколько нужно собрать на буст
-    boost_active_until TIMESTAMP WITH TIME ZONE DEFAULT NULL
-);
-
--- 2. Таблица пользователей
+-- 1. Таблица пользователей
 CREATE TABLE IF NOT EXISTS users (
-    tg_id BIGINT PRIMARY KEY,                      -- Telegram ID выступает основным ключом
+    tg_id BIGINT PRIMARY KEY,
     username VARCHAR(100),
-    custom_name VARCHAR(100) DEFAULT NULL,        -- Кастомный ник для маскировки в топе
+    custom_name VARCHAR(100) DEFAULT NULL,
+    avatar_url TEXT,
     role VARCHAR(20) DEFAULT 'user',               -- user, admin, superadmin
     balance NUMERIC(20, 2) DEFAULT 0.00,
     energy INT DEFAULT 1000,
     max_energy INT DEFAULT 1000,
-    passive_income NUMERIC(20, 2) DEFAULT 0.00,   -- Суммарный заработок в час
-    squad_id INT REFERENCES squads(id),            -- Жесткая привязка к группе
-    is_hidden BOOLEAN DEFAULT FALSE,               -- Скрыть из лидерборда
-    is_anonymous_tips BOOLEAN DEFAULT FALSE,       -- Анонимные чаевые в беседах
-    suspended_at TIMESTAMP WITH TIME ZONE DEFAULT NULL, -- Для отстраненных админов
-    last_active_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    passive_income NUMERIC(20, 2) DEFAULT 0.00,
+    is_hidden BOOLEAN DEFAULT FALSE,
+    last_active_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. Справочник апгрейдов и персонажей (Заполняется из админки)
+-- 2. Магазин пассивного дохода
 CREATE TABLE IF NOT EXISTS upgrades (
     id SERIAL PRIMARY KEY,
     title VARCHAR(100) NOT NULL,
     description TEXT,
-    category VARCHAR(50) NOT NULL,                 -- 'click', 'passive', 'meme'
     base_price NUMERIC(20, 2) NOT NULL,
-    price_multiplier NUMERIC(4, 2) DEFAULT 1.5,   -- На сколько умножается цена с каждым уровнем
-    profit_increase NUMERIC(20, 2) NOT NULL,      -- Что дает (+ к тапу или + к пассивке в час)
+    profit_increase NUMERIC(20, 2) NOT NULL,      -- Доход в минуту
     image_url TEXT
 );
 
--- 4. Связующая таблица купленных апгрейдов юзеров
+-- 3. Покупки пользователей в магазине
 CREATE TABLE IF NOT EXISTS user_upgrades (
     user_id BIGINT REFERENCES users(tg_id) ON DELETE CASCADE,
     upgrade_id INT REFERENCES upgrades(id) ON DELETE CASCADE,
-    level INT DEFAULT 1,
+    quantity INT DEFAULT 1,
     PRIMARY KEY (user_id, upgrade_id)
 );
 
--- 5. История транзакций (Для логов, аналитики и чаевых)
+-- 4. Ставки (События)
+CREATE TABLE IF NOT EXISTS bet_events (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    options JSONB NOT NULL,                        -- ["Вариант 1", "Вариант 2"]
+    status VARCHAR(20) DEFAULT 'open',             -- 'open', 'closed', 'resolved'
+    closes_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    winning_option_index INT DEFAULT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. Ставки пользователей
+CREATE TABLE IF NOT EXISTS user_bets (
+    id BIGSERIAL PRIMARY KEY,
+    event_id INT REFERENCES bet_events(id) ON DELETE CASCADE,
+    user_id BIGINT REFERENCES users(tg_id) ON DELETE CASCADE,
+    option_index INT NOT NULL,
+    amount NUMERIC(20, 2) NOT NULL,
+    payout NUMERIC(20, 2) DEFAULT 0.00,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6. Обратная связь / Опросы (DAO)
+CREATE TABLE IF NOT EXISTS feedbacks (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(tg_id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending',          -- 'pending', 'interesting', 'unimportant'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 7. Транзакции (Логирование экономики)
 CREATE TABLE IF NOT EXISTS transactions (
     id BIGSERIAL PRIMARY KEY,
-    sender_id BIGINT REFERENCES users(tg_id),      -- Может быть NULL (если начислила система)
-    receiver_id BIGINT REFERENCES users(tg_id),    -- Может быть NULL (если покупка в магазине)
-    squad_id INT REFERENCES squads(id),            -- Заполнено, если донат в общак
+    user_id BIGINT REFERENCES users(tg_id) ON DELETE CASCADE,
     amount NUMERIC(20, 2) NOT NULL,
-    type VARCHAR(30) NOT NULL,                     -- 'click', 'tip', 'shop_buy', 'squad_donate', 'bet_place', 'bet_payout', 'quiz_reward', 'bonus'
+    type VARCHAR(30) NOT NULL,                     -- 'click', 'shop_buy', 'shop_sell', 'bet_place', 'bet_payout', 'passive_income'
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-
-
--- 10. Таблица предложений фич (DAO)
-CREATE TABLE IF NOT EXISTS proposals (
-    id SERIAL PRIMARY KEY,
-    user_id BIGINT REFERENCES users(tg_id),
-    title VARCHAR(150) NOT NULL,
-    description TEXT NOT NULL,
-    status VARCHAR(20) DEFAULT 'pending',          -- 'pending', 'approved', 'rejected', 'implemented'
-    votes_up INT DEFAULT 0,
-    votes_down INT DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_users_balance ON users(balance DESC) WHERE is_hidden = FALSE; -- Быстрый рендер топа юзеров
-CREATE INDEX IF NOT EXISTS idx_squads_points ON squads(total_points DESC);                 -- Быстрый рендер топа групп
+-- Индексы
+CREATE INDEX IF NOT EXISTS idx_users_balance ON users(balance DESC) WHERE is_hidden = FALSE;
+CREATE INDEX IF NOT EXISTS idx_user_bets_event ON user_bets(event_id);

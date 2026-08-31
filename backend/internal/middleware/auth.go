@@ -117,9 +117,8 @@ func TMAAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
 			
-			// If missing or starts with Bearer, fallback to WebAuth logic
+			// Fallback to WebAuth logic
 			if authHeader == "" || !strings.HasPrefix(authHeader, "tma ") {
-				// We call WebAuthMiddleware logic directly or let we delegate
 				webAuthFunc := WebAuthMiddleware(botToken, userRepo)(next)
 				webAuthFunc.ServeHTTP(w, r)
 				return
@@ -134,21 +133,14 @@ func TMAAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 
 			user, err := userRepo.GetUserByID(r.Context(), userID)
 			if err != nil || user == nil {
-				// If user does not exist yet (e.g. initial login), we can let it pass, but role is user
+				// Initial login, grant user role
 				ctx := context.WithValue(r.Context(), UserIDKey, userID)
 				ctx = context.WithValue(ctx, RoleKey, "user")
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
 
-			if user.IsBanned {
-				reason := "Ваш аккаунт заблокирован"
-				if user.BanReason != nil && *user.BanReason != "" {
-					reason += ": " + *user.BanReason
-				}
-				http.Error(w, reason, http.StatusForbidden)
-				return
-			}
+
 
 			ctx := context.WithValue(r.Context(), UserIDKey, userID)
 			ctx = context.WithValue(ctx, RoleKey, user.Role)
@@ -207,14 +199,7 @@ func WebAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 				return
 			}
 
-			if user.IsBanned {
-				reason := "Ваш аккаунт заблокирован"
-				if user.BanReason != nil && *user.BanReason != "" {
-					reason += ": " + *user.BanReason
-				}
-				http.Error(w, reason, http.StatusForbidden)
-				return
-			}
+
 
 			ctx := context.WithValue(r.Context(), UserIDKey, parsedUserID)
 			ctx = context.WithValue(ctx, RoleKey, user.Role)

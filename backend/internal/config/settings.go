@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,11 +21,7 @@ var GlobalSettings = &SettingsCache{
 	settings: make(map[string]interface{}),
 }
 
-// Global Environment Variables
-var SMART_CONTRACT_ADDRESS string
-
 func InitEnvVars() {
-	SMART_CONTRACT_ADDRESS = os.Getenv("SMART_CONTRACT_ADDRESS")
 }
 
 // LoadFromDB fetches all settings from the database and updates the in-memory cache

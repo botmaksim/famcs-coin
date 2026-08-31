@@ -4,8 +4,8 @@
   --bg-color: #f8fafc; /* Sleek light gray / slate 50 */
   --text-color: #0f172a; /* Slate 900 */
   --secondary-bg: #ffffff;
-  --accent-color: #2563eb; /* Stylish Blue */
-  --accent-hover: #1d4ed8;
+  --accent-color: #f97316; /* Stylish Orange */
+  --accent-hover: #ea580c;
   --card-bg: rgba(255, 255, 255, 0.85);
   --glass-border: rgba(0, 0, 0, 0.05);
 }
@@ -14,8 +14,8 @@
   --bg-color: #0f172a; /* Slate 900 */
   --text-color: #f8fafc; /* Slate 50 */
   --secondary-bg: #1e293b; /* Slate 800 */
-  --accent-color: #3b82f6; /* Blue 500 */
-  --accent-hover: #60a5fa; /* Blue 400 */
+  --accent-color: #fb923c; /* Orange 400 */
+  --accent-hover: #fdba74; /* Orange 300 */
   --card-bg: rgba(30, 41, 59, 0.85);
   --glass-border: rgba(255, 255, 255, 0.05);
 }
@@ -69,9 +69,9 @@ button:active {
 
 /* Animations */
 @keyframes pulseGlow {
-  0% { box-shadow: 0 0 20px rgba(37, 99, 235, 0.1); }
-  50% { box-shadow: 0 0 40px rgba(37, 99, 235, 0.3); }
-  100% { box-shadow: 0 0 20px rgba(37, 99, 235, 0.1); }
+  0% { box-shadow: 0 0 20px rgba(249, 115, 22, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(249, 115, 22, 0.3); }
+  100% { box-shadow: 0 0 20px rgba(249, 115, 22, 0.1); }
 }
 
 @keyframes float {
@@ -81,8 +81,8 @@ button:active {
 }
 
 .tap-button {
-  background: radial-gradient(circle at 30% 30%, #eff6ff, #bfdbfe);
-  border: 2px solid rgba(37, 99, 235, 0.3);
+  background: radial-gradient(circle at 30% 30%, #fff7ed, #fed7aa);
+  border: 2px solid rgba(249, 115, 22, 0.3);
   border-radius: 50%;
   width: 250px;
   height: 250px;
@@ -99,7 +99,7 @@ button:active {
 }
 
 .dark .tap-button {
-  background: radial-gradient(circle at 30% 30%, #1e3a8a, #172554);
+  background: radial-gradient(circle at 30% 30%, #7c2d12, #431407);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(255, 255, 255, 0.1);
 }
 

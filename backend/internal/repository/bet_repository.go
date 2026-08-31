@@ -2,237 +2,179 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
+	"time"
 
 	"famcscoin-backend/internal/models"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type BetRepository interface {
-	GetActiveEvents(ctx context.Context, tgID int64) ([]*models.BetEvent, error)
-	PlaceBet(ctx context.Context, tgID int64, eventID int, chosenOption string, amount float64) error
-	ResolveEvent(ctx context.Context, adminID int64, eventID int, winningOption string) error
+	GetBets(ctx context.Context, userID int64) ([]models.BetEvent, error)
+	CreateBet(ctx context.Context, event *models.BetEvent) error
+	PlaceBet(ctx context.Context, userID int64, eventID int, optionIndex int, amount float64) error
+	CloseBet(ctx context.Context, eventID int, winningOption int) error
 }
 
 type betRepository struct {
-	pool *pgxpool.Pool
+	db *pgxpool.Pool
 }
 
-func NewBetRepository(pool *pgxpool.Pool) BetRepository {
-	return &betRepository{pool: pool}
+func NewBetRepository(db *pgxpool.Pool) BetRepository {
+	return &betRepository{db: db}
 }
 
-func (r *betRepository) GetActiveEvents(ctx context.Context, tgID int64) ([]*models.BetEvent, error) {
-	// Need to get all active events ('open' or 'closed' recently, but for now just 'open' and maybe 'closed' to show history)
-	// We will show 'open' and 'closed' events.
+func (r *betRepository) GetBets(ctx context.Context, userID int64) ([]models.BetEvent, error) {
 	query := `
 		SELECT 
-			e.id, e.title, e.option_a_name, e.option_b_name, e.status, e.winning_option, e.created_at,
-			COALESCE(SUM(CASE WHEN ub.chosen_option = 'A' THEN ub.amount ELSE 0 END), 0) AS pool_a,
-			COALESCE(SUM(CASE WHEN ub.chosen_option = 'B' THEN ub.amount ELSE 0 END), 0) AS pool_b,
-			(SELECT chosen_option FROM user_bets WHERE user_id = $1 AND event_id = e.id LIMIT 1) AS user_bet_option,
-			(SELECT amount FROM user_bets WHERE user_id = $1 AND event_id = e.id LIMIT 1) AS user_bet_amount
+			e.id, e.title, e.description, e.options, e.status, e.closes_at, e.winning_option_index, e.created_at,
+			ub.option_index, ub.amount
 		FROM bet_events e
-		LEFT JOIN user_bets ub ON e.id = ub.event_id
-		WHERE e.status = 'open' OR e.status = 'closed'
-		GROUP BY e.id
-		ORDER BY e.status DESC, e.created_at DESC
+		LEFT JOIN user_bets ub ON e.id = ub.event_id AND ub.user_id = $1
+		ORDER BY e.created_at DESC
 	`
-	rows, err := r.pool.Query(ctx, query, tgID)
+	rows, err := r.db.Query(ctx, query, userID)
 	if err != nil {
-		return nil, fmt.Errorf("GetActiveEvents query error: %w", err)
+		return nil, err
 	}
 	defer rows.Close()
 
-	var events []*models.BetEvent
+	var bets []models.BetEvent
 	for rows.Next() {
-		ev := &models.BetEvent{}
-		err := rows.Scan(
-			&ev.ID, &ev.Title, &ev.OptionAName, &ev.OptionBName, &ev.Status, &ev.WinningOption, &ev.CreatedAt,
-			&ev.PoolA, &ev.PoolB, &ev.UserBetOption, &ev.UserBetAmount,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("GetActiveEvents scan error: %w", err)
+		var b models.BetEvent
+		var optionsRaw []byte
+		if err := rows.Scan(&b.ID, &b.Title, &b.Description, &optionsRaw, &b.Status, &b.ClosesAt, &b.WinningOption, &b.CreatedAt, &b.UserBetOption, &b.UserBetAmount); err != nil {
+			log.Println("Error scanning bet:", err)
+			continue
 		}
-		events = append(events, ev)
+		json.Unmarshal(optionsRaw, &b.Options)
+		
+		// Calculate pools
+		poolsQuery := `SELECT option_index, SUM(amount) FROM user_bets WHERE event_id = $1 GROUP BY option_index`
+		pRows, _ := r.db.Query(ctx, poolsQuery, b.ID)
+		
+		b.Pools = make([]float64, len(b.Options))
+		for pRows.Next() {
+			var idx int
+			var amount float64
+			if err := pRows.Scan(&idx, &amount); err == nil && idx >= 0 && idx < len(b.Pools) {
+				b.Pools[idx] = amount
+			}
+		}
+		pRows.Close()
+
+		bets = append(bets, b)
 	}
-	return events, nil
+	return bets, nil
 }
 
-func (r *betRepository) PlaceBet(ctx context.Context, tgID int64, eventID int, chosenOption string, amount float64) error {
-	if chosenOption != "A" && chosenOption != "B" {
-		return fmt.Errorf("invalid option")
-	}
-	if amount <= 0 {
-		return fmt.Errorf("invalid amount")
-	}
+func (r *betRepository) CreateBet(ctx context.Context, event *models.BetEvent) error {
+	opts, _ := json.Marshal(event.Options)
+	_, err := r.db.Exec(ctx, `INSERT INTO bet_events (title, description, options, closes_at) VALUES ($1, $2, $3, $4)`, event.Title, event.Description, opts, event.ClosesAt)
+	return err
+}
 
-	tx, err := r.pool.Begin(ctx)
+func (r *betRepository) PlaceBet(ctx context.Context, userID int64, eventID int, optionIndex int, amount float64) error {
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to begin tx: %w", err)
+		return err
 	}
 	defer tx.Rollback(ctx)
 
-	// Check event status
+	var closesAt time.Time
 	var status string
-	err = tx.QueryRow(ctx, "SELECT status FROM bet_events WHERE id = $1 FOR UPDATE", eventID).Scan(&status)
+	err = tx.QueryRow(ctx, `SELECT closes_at, status FROM bet_events WHERE id = $1`, eventID).Scan(&closesAt, &status)
 	if err != nil {
-		return fmt.Errorf("event not found or lock failed: %w", err)
-	}
-	if status != "open" {
-		return fmt.Errorf("event is not open for betting")
+		return err
 	}
 
-	// Check if already bet
-	var exists bool
-	err = tx.QueryRow(ctx, "SELECT TRUE FROM user_bets WHERE user_id = $1 AND event_id = $2", tgID, eventID).Scan(&exists)
-	if err == nil && exists {
-		return fmt.Errorf("you have already placed a bet on this event")
+	if status != "open" || time.Now().After(closesAt) {
+		return fmt.Errorf("betting is closed for this event")
 	}
 
-	// Lock user
 	var balance float64
-	err = tx.QueryRow(ctx, "SELECT balance FROM users WHERE tg_id = $1 FOR UPDATE", tgID).Scan(&balance)
+	err = tx.QueryRow(ctx, `SELECT balance FROM users WHERE tg_id = $1 FOR UPDATE`, userID).Scan(&balance)
 	if err != nil {
-		return fmt.Errorf("failed to lock user: %w", err)
+		return err
 	}
+
 	if balance < amount {
 		return fmt.Errorf("insufficient balance")
 	}
 
-	// Deduct balance
-	_, err = tx.Exec(ctx, "UPDATE users SET balance = balance - $1 WHERE tg_id = $2", amount, tgID)
+	_, err = tx.Exec(ctx, `UPDATE users SET balance = balance - $1 WHERE tg_id = $2`, amount, userID)
 	if err != nil {
-		return fmt.Errorf("failed to update user balance: %w", err)
+		return err
 	}
 
-	// Insert bet
-	_, err = tx.Exec(ctx, "INSERT INTO user_bets (user_id, event_id, chosen_option, amount) VALUES ($1, $2, $3, $4)", tgID, eventID, chosenOption, amount)
+	_, err = tx.Exec(ctx, `INSERT INTO user_bets (event_id, user_id, option_index, amount) VALUES ($1, $2, $3, $4)`, eventID, userID, optionIndex, amount)
 	if err != nil {
-		return fmt.Errorf("failed to insert bet: %w", err)
+		return err
 	}
 
-	// Log transaction
-	_, err = tx.Exec(ctx, "INSERT INTO transactions (sender_id, amount, type) VALUES ($1, $2, 'bet_placed')", tgID, amount)
+	_, err = tx.Exec(ctx, `INSERT INTO transactions (user_id, amount, type) VALUES ($1, $2, 'bet_place')`, userID, -amount)
 	if err != nil {
-		return fmt.Errorf("failed to log transaction: %w", err)
+		return err
 	}
 
 	return tx.Commit(ctx)
 }
 
-func (r *betRepository) ResolveEvent(ctx context.Context, adminID int64, eventID int, winningOption string) error {
-	tx, err := r.pool.Begin(ctx)
+func (r *betRepository) CloseBet(ctx context.Context, eventID int, winningOption int) error {
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to begin tx: %w", err)
+		return err
 	}
 	defer tx.Rollback(ctx)
 
-	var status string
-	err = tx.QueryRow(ctx, "SELECT status FROM bet_events WHERE id = $1 FOR UPDATE", eventID).Scan(&status)
+	// Update event status
+	_, err = tx.Exec(ctx, `UPDATE bet_events SET status = 'resolved', winning_option_index = $1 WHERE id = $2 AND status != 'resolved'`, winningOption, eventID)
 	if err != nil {
-		return fmt.Errorf("event not found: %w", err)
-	}
-	if status != "open" {
-		return fmt.Errorf("event is already closed or canceled")
+		return err
 	}
 
-	if winningOption == "cancel" {
-		_, err = tx.Exec(ctx, "UPDATE bet_events SET status = 'canceled' WHERE id = $1", eventID)
-		if err != nil {
-			return err
-		}
+	// Calculate total pool and winning pool
+	var totalPool float64
+	var winningPool float64
+	err = tx.QueryRow(ctx, `SELECT COALESCE(SUM(amount), 0) FROM user_bets WHERE event_id = $1`, eventID).Scan(&totalPool)
+	if err != nil { return err }
+	
+	err = tx.QueryRow(ctx, `SELECT COALESCE(SUM(amount), 0) FROM user_bets WHERE event_id = $1 AND option_index = $2`, eventID, winningOption).Scan(&winningPool)
+	if err != nil { return err }
 
-		// Refund everyone
-		rows, err := tx.Query(ctx, "SELECT user_id, amount FROM user_bets WHERE event_id = $1", eventID)
-		if err != nil {
-			return err
-		}
+	if winningPool > 0 {
+		// Distribute winnings
+		rows, err := tx.Query(ctx, `SELECT id, user_id, amount FROM user_bets WHERE event_id = $1 AND option_index = $2`, eventID, winningOption)
+		if err != nil { return err }
 		defer rows.Close()
 
+		type Winner struct {
+			BetID  int
+			UserID int64
+			Amount float64
+		}
+		var winners []Winner
 		for rows.Next() {
-			var uid int64
-			var amt float64
-			if err := rows.Scan(&uid, &amt); err != nil {
-				return err
-			}
-			_, err = tx.Exec(ctx, "UPDATE users SET balance = balance + $1 WHERE tg_id = $2", amt, uid)
-			if err != nil {
-				return err
-			}
-			_, err = tx.Exec(ctx, "INSERT INTO transactions (receiver_id, amount, type) VALUES ($1, $2, 'bet_refund')", uid, amt)
-			if err != nil {
-				return err
+			var w Winner
+			if err := rows.Scan(&w.BetID, &w.UserID, &w.Amount); err == nil {
+				winners = append(winners, w)
 			}
 		}
-		
-		_, err = tx.Exec(ctx, "INSERT INTO admin_logs (admin_id, action, details) VALUES ($1, 'resolve_bet', $2)", adminID, fmt.Sprintf("Canceled event %d", eventID))
-		if err != nil {
-			return err
-		}
-		return tx.Commit(ctx)
-	}
+		rows.Close()
 
-	if winningOption != "A" && winningOption != "B" {
-		return fmt.Errorf("invalid winning option, must be A, B, or cancel")
-	}
-
-	// Calculate pools
-	var poolWin, poolLose float64
-	err = tx.QueryRow(ctx, "SELECT COALESCE(SUM(amount), 0) FROM user_bets WHERE event_id = $1 AND chosen_option = $2", eventID, winningOption).Scan(&poolWin)
-	if err != nil {
-		return err
-	}
-	var losingOption string
-	if winningOption == "A" {
-		losingOption = "B"
-	} else {
-		losingOption = "A"
-	}
-	err = tx.QueryRow(ctx, "SELECT COALESCE(SUM(amount), 0) FROM user_bets WHERE event_id = $1 AND chosen_option = $2", eventID, losingOption).Scan(&poolLose)
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec(ctx, "UPDATE bet_events SET status = 'closed', winning_option = $1 WHERE id = $2", winningOption, eventID)
-	if err != nil {
-		return err
-	}
-
-	if poolWin > 0 {
-		// Distribute poolLose proportionally to winners
-		rows, err := tx.Query(ctx, "SELECT user_id, amount FROM user_bets WHERE event_id = $1 AND chosen_option = $2", eventID, winningOption)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var uid int64
-			var betAmt float64
-			if err := rows.Scan(&uid, &betAmt); err != nil {
-				return err
-			}
+		for _, w := range winners {
+			payout := (w.Amount / winningPool) * totalPool
+			_, err = tx.Exec(ctx, `UPDATE users SET balance = balance + $1 WHERE tg_id = $2`, payout, w.UserID)
+			if err != nil { return err }
 			
-			// winAmount = original bet + (proportion of losing pool)
-			proportion := betAmt / poolWin
-			profit := poolLose * proportion
-			totalWin := betAmt + profit
+			_, err = tx.Exec(ctx, `UPDATE user_bets SET payout = $1 WHERE id = $2`, payout, w.BetID)
+			if err != nil { return err }
 
-			_, err = tx.Exec(ctx, "UPDATE users SET balance = balance + $1 WHERE tg_id = $2", totalWin, uid)
-			if err != nil {
-				return err
-			}
-			_, err = tx.Exec(ctx, "INSERT INTO transactions (receiver_id, amount, type) VALUES ($1, $2, 'bet_win')", uid, totalWin)
-			if err != nil {
-				return err
-			}
+			_, err = tx.Exec(ctx, `INSERT INTO transactions (user_id, amount, type) VALUES ($1, $2, 'bet_payout')`, w.UserID, payout)
+			if err != nil { return err }
 		}
-	} // If poolWin == 0, nobody won, losing pool is just burned (or stays in the system).
-
-	_, err = tx.Exec(ctx, "INSERT INTO admin_logs (admin_id, action, details) VALUES ($1, 'resolve_bet', $2)", adminID, fmt.Sprintf("Resolved event %d with option %s", eventID, winningOption))
-	if err != nil {
-		return err
 	}
 
 	return tx.Commit(ctx)

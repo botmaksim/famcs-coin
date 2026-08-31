@@ -3,8 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
-	"math"
-	"time"
+	"log"
 
 	"famcscoin-backend/internal/models"
 	"github.com/jackc/pgx/v5"
@@ -12,91 +11,237 @@ import (
 )
 
 type ShopRepository interface {
-	BuyUpgrade(ctx context.Context, tgID int64, upgradeID int) error
-	GetShopItemsForUser(ctx context.Context, tgID int64) ([]*models.ShopItem, error)
-	GetSkins(ctx context.Context, tgID int64) ([]*models.Skin, error)
-	BuySkin(ctx context.Context, tgID int64, skinID int) error
-	SetActiveSkin(ctx context.Context, tgID int64, skinID int) error
+	GetItems(ctx context.Context, userID int64) ([]models.ShopItem, error)
+	CreateItem(ctx context.Context, upgrade *models.Upgrade) error
+	DeleteItem(ctx context.Context, upgradeID int) error
+	BuyItem(ctx context.Context, userID int64, upgradeID int) error
+	SellItem(ctx context.Context, userID int64, upgradeID int) error
 }
 
 type shopRepository struct {
-	pool *pgxpool.Pool
+	db *pgxpool.Pool
 }
 
-func NewShopRepository(pool *pgxpool.Pool) ShopRepository {
-	return &shopRepository{pool: pool}
+func NewShopRepository(db *pgxpool.Pool) ShopRepository {
+	return &shopRepository{db: db}
 }
 
-func (r *shopRepository) BuyUpgrade(ctx context.Context, tgID int64, upgradeID int) error {
-	tx, err := r.pool.Begin(ctx)
+func (r *shopRepository) GetItems(ctx context.Context, userID int64) ([]models.ShopItem, error) {
+	query := `
+		SELECT u.id, u.title, u.description, u.base_price, u.profit_increase, u.image_url, COALESCE(uu.quantity, 0)
+		FROM upgrades u
+		LEFT JOIN user_upgrades uu ON u.id = uu.upgrade_id AND uu.user_id = $1
+		ORDER BY u.base_price ASC
+	`
+	rows, err := r.db.Query(ctx, query, userID)
 	if err != nil {
-		return fmt.Errorf("failed to begin tx: %w", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.ShopItem
+	for rows.Next() {
+		var item models.ShopItem
+		var basePrice float64
+		if err := rows.Scan(&item.ID, &item.Title, &item.Description, &basePrice, &item.ProfitIncrease, &item.ImageURL, &item.Quantity); err != nil {
+			log.Println("Error scanning shop item:", err)
+			continue
+		}
+		// Linear price scaling
+		item.Price = basePrice * float64(item.Quantity+1) 
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func (r *shopRepository) CreateItem(ctx context.Context, upgrade *models.Upgrade) error {
+	query := `INSERT INTO upgrades (title, description, base_price, profit_increase, image_url) VALUES ($1, $2, $3, $4, $5)`
+	_, err := r.db.Exec(ctx, query, upgrade.Title, upgrade.Description, upgrade.BasePrice, upgrade.ProfitIncrease, upgrade.ImageURL)
+	return err
+}
+
+func (r *shopRepository) DeleteItem(ctx context.Context, upgradeID int) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
 	}
 	defer tx.Rollback(ctx)
 
-	// 1. Блокируем строку юзера (FOR UPDATE)
-	var userBalance float64
-	var passiveIncome float64
-	var sleepUntil *time.Time
-	err = tx.QueryRow(ctx, "SELECT balance, passive_income, sleep_until FROM users WHERE tg_id = $1 FOR UPDATE", tgID).Scan(&userBalance, &passiveIncome, &sleepUntil)
+	// Refund users
+	rows, err := tx.Query(ctx, `SELECT uu.user_id, uu.quantity, u.base_price FROM user_upgrades uu JOIN upgrades u ON uu.upgrade_id = u.id WHERE uu.upgrade_id = $1`, upgradeID)
 	if err != nil {
-		return fmt.Errorf("failed to lock user: %w", err)
+		return err
+	}
+	
+	type refund struct {
+		userID int64
+		amount float64
+	}
+	var refunds []refund
+	for rows.Next() {
+		var r refund
+		var q int
+		var bp float64
+		if err := rows.Scan(&r.userID, &q, &bp); err == nil {
+			// Calculate total spent via arithmetic progression sum
+			r.amount = bp * float64(q) * float64(q+1) / 2.0
+			refunds = append(refunds, r)
+		}
+	}
+	rows.Close()
+
+	for _, ref := range refunds {
+		_, err = tx.Exec(ctx, `UPDATE users SET balance = balance + $1 WHERE tg_id = $2`, ref.amount, ref.userID)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `INSERT INTO transactions (user_id, amount, type) VALUES ($1, $2, 'shop_refund')`, ref.userID, ref.amount)
+		if err != nil {
+			return err
+		}
 	}
 
-	if sleepUntil != nil && sleepUntil.After(time.Now()) {
-		return fmt.Errorf("shop locked during sleep")
-	}
-
-	// 2. Получаем базовую инфу об апгрейде
-	var basePrice float64
-	var priceMultiplier float64
-	var profitIncrease float64
-	err = tx.QueryRow(ctx, "SELECT base_price, price_multiplier, profit_increase FROM upgrades WHERE id = $1", upgradeID).
-		Scan(&basePrice, &priceMultiplier, &profitIncrease)
+	_, err = tx.Exec(ctx, `DELETE FROM upgrades WHERE id = $1`, upgradeID)
 	if err != nil {
-		return fmt.Errorf("upgrade not found: %w", err)
+		return err
 	}
 
-	// 3. Узнаем текущий уровень апгрейда у юзера
-	var currentLevel int
-	err = tx.QueryRow(ctx, "SELECT level FROM user_upgrades WHERE user_id = $1 AND upgrade_id = $2", tgID, upgradeID).Scan(&currentLevel)
+	// Recalculate passive income for affected users
+	_, err = tx.Exec(ctx, `
+		UPDATE users u SET passive_income = COALESCE((
+			SELECT SUM(uu.quantity * up.profit_increase) 
+			FROM user_upgrades uu JOIN upgrades up ON uu.upgrade_id = up.id 
+			WHERE uu.user_id = u.tg_id
+		), 0)
+		WHERE u.tg_id IN (SELECT user_id FROM user_upgrades WHERE upgrade_id = $1)
+	`, upgradeID)
+	// Rebuild passive income for all refunded users
+	for _, ref := range refunds {
+		_, _ = tx.Exec(ctx, `
+			UPDATE users SET passive_income = COALESCE((
+				SELECT SUM(uu.quantity * up.profit_increase) 
+				FROM user_upgrades uu JOIN upgrades up ON uu.upgrade_id = up.id 
+				WHERE uu.user_id = $1
+			), 0) WHERE tg_id = $1
+		`, ref.userID)
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (r *shopRepository) BuyItem(ctx context.Context, userID int64, upgradeID int) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Lock user
+	var balance float64
+	err = tx.QueryRow(ctx, `SELECT balance FROM users WHERE tg_id = $1 FOR UPDATE`, userID).Scan(&balance)
+	if err != nil {
+		return err
+	}
+
+	// Get Upgrade
+	var basePrice, profit float64
+	err = tx.QueryRow(ctx, `SELECT base_price, profit_increase FROM upgrades WHERE id = $1`, upgradeID).Scan(&basePrice, &profit)
+	if err != nil {
+		return err
+	}
+
+	// Get User Upgrade level
+	var qty int
+	err = tx.QueryRow(ctx, `SELECT quantity FROM user_upgrades WHERE user_id = $1 AND upgrade_id = $2`, userID, upgradeID).Scan(&qty)
 	if err != nil && err != pgx.ErrNoRows {
-		return fmt.Errorf("failed to check user upgrade: %w", err)
+		return err
 	}
 
-	// 4. Считаем стоимость апгрейда
-	// Если уровень 0 (еще не куплен), то basePrice. Иначе basePrice * (priceMultiplier ^ currentLevel)
-	cost := basePrice
-	if currentLevel > 0 {
-		cost = basePrice * math.Pow(priceMultiplier, float64(currentLevel))
-	}
+	price := basePrice * float64(qty+1)
 
-	if userBalance < cost {
+	if balance < price {
 		return fmt.Errorf("insufficient balance")
 	}
 
-	// 5. Обновляем user_upgrades
-	if currentLevel == 0 {
-		_, err = tx.Exec(ctx, "INSERT INTO user_upgrades (user_id, upgrade_id, level) VALUES ($1, $2, 1)", tgID, upgradeID)
+	// Deduct balance, increase passive income
+	_, err = tx.Exec(ctx, `UPDATE users SET balance = balance - $1, passive_income = passive_income + $2 WHERE tg_id = $3`, price, profit, userID)
+	if err != nil {
+		return err
+	}
+
+	// Update or insert user upgrade
+	_, err = tx.Exec(ctx, `
+		INSERT INTO user_upgrades (user_id, upgrade_id, quantity) VALUES ($1, $2, 1)
+		ON CONFLICT (user_id, upgrade_id) DO UPDATE SET quantity = user_upgrades.quantity + 1
+	`, userID, upgradeID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, `INSERT INTO transactions (user_id, amount, type) VALUES ($1, $2, 'shop_buy')`, userID, -price)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (r *shopRepository) SellItem(ctx context.Context, userID int64, upgradeID int) error {
+	// Sell one upgrade level for 50% refund
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Lock user
+	var currentPassive float64
+	err = tx.QueryRow(ctx, `SELECT passive_income FROM users WHERE tg_id = $1 FOR UPDATE`, userID).Scan(&currentPassive)
+	if err != nil {
+		return err
+	}
+
+	// Get Upgrade
+	var basePrice, profit float64
+	err = tx.QueryRow(ctx, `SELECT base_price, profit_increase FROM upgrades WHERE id = $1`, upgradeID).Scan(&basePrice, &profit)
+	if err != nil {
+		return err
+	}
+
+	// Get User Upgrade level
+	var qty int
+	err = tx.QueryRow(ctx, `SELECT quantity FROM user_upgrades WHERE user_id = $1 AND upgrade_id = $2`, userID, upgradeID).Scan(&qty)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return fmt.Errorf("you don't own this item")
+		}
+		return err
+	}
+
+	if qty <= 0 {
+		return fmt.Errorf("you don't own this item")
+	}
+
+	refundPrice := (basePrice * float64(qty)) * 0.5 
+
+	// Update user
+	_, err = tx.Exec(ctx, `UPDATE users SET balance = balance + $1, passive_income = GREATEST(0, passive_income - $2) WHERE tg_id = $3`, refundPrice, profit, userID)
+	if err != nil {
+		return err
+	}
+
+	if qty == 1 {
+		_, err = tx.Exec(ctx, `DELETE FROM user_upgrades WHERE user_id = $1 AND upgrade_id = $2`, userID, upgradeID)
 	} else {
-		_, err = tx.Exec(ctx, "UPDATE user_upgrades SET level = level + 1 WHERE user_id = $1 AND upgrade_id = $2", tgID, upgradeID)
+		_, err = tx.Exec(ctx, `UPDATE user_upgrades SET quantity = quantity - 1 WHERE user_id = $1 AND upgrade_id = $2`, userID, upgradeID)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to update user_upgrades: %w", err)
-	}
-
-	// 6. Списываем деньги и начисляем passive income
-	newBalance := userBalance - cost
-	newPassiveIncome := passiveIncome + profitIncrease
-	_, err = tx.Exec(ctx, "UPDATE users SET balance = $1, passive_income = $2 WHERE tg_id = $3", newBalance, newPassiveIncome, tgID)
-	if err != nil {
-		return fmt.Errorf("failed to update user balance: %w", err)
+		return err
 	}
 
-	// 7. Сохраняем в транзакции
-	_, err = tx.Exec(ctx, "INSERT INTO transactions (sender_id, amount, type) VALUES ($1, $2, 'shop_buy')", tgID, cost)
+	_, err = tx.Exec(ctx, `INSERT INTO transactions (user_id, amount, type) VALUES ($1, $2, 'shop_sell')`, userID, refundPrice)
 	if err != nil {
-		return fmt.Errorf("failed to insert transaction: %w", err)
+		return err
 	}
 
 	return tx.Commit(ctx)

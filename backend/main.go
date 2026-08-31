@@ -58,30 +58,22 @@ func main() {
 	// WebSockets Hub
 	go hub.DefaultHub.Run()
 
-	cryptoRepo := repository.NewCryptoRepository(database.Pool)
 	userRepo := repository.NewUserRepository(database.Pool)
 
 	// Initialize Bot
-	tgBot, err := bot.NewBot(botToken, userRepo, cryptoRepo)
+	tgBot, err := bot.NewBot(botToken, userRepo)
 	if err != nil {
 		log.Printf("Failed to initialize telegram bot: %v", err)
 	} else {
 		go tgBot.Start(context.Background())
-		log.Println("Telegram bot is running for /tip logic...")
+		log.Println("Telegram bot is running for /start and /tip logic...")
 	}
 
 	// Настраиваем роутер
 	router := api.SetupRouter(database.Pool, botToken)
 
-	// Запуск HTTP Сервера (заглушка)
-	go startBot(botToken)
-
 	fmt.Printf("FAMCS Coin API запущен на порту %s\n", port)
 	if err := http.ListenAndServe(":"+port, router); err != nil {
 		log.Fatalf("Ошибка при запуске сервера: %v", err)
 	}
-}
-
-func startBot(token string) {
-	fmt.Printf("🤖 Telegram Бот инициализирован (Токен: %s...)\n", token[:5])
 }

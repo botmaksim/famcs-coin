@@ -1,1 +1,0 @@
--- Redundant migration. The proposals table already has status column.

@@ -12,23 +12,18 @@ import { TmaLayout } from './components/TMA/TmaLayout';
 
 // Direct Imports (TMA Core)
 import Terminal from './pages/TMA/Terminal';
-import College from './pages/TMA/College';
-import Leaderboard from './pages/TMA/Leaderboard';
-import DAO from './pages/TMA/DAO';
-import Tasks from './pages/TMA/Tasks';
-import Events from './pages/TMA/Events';
+import Bets from './pages/TMA/Bets';
+import Profile from './pages/TMA/Profile';
+import Feedback from './pages/TMA/Feedback';
 
 // Direct Imports (Web Core)
-import AcceptInvite from './pages/Web/AcceptInvite';
-import WebDAO from './pages/Web/WebDAO';
 import WebLanding from './pages/Web/WebLanding';
 
 // Lazy Loaded Components
-const Wallet = lazy(() => import('./pages/TMA/Wallet'));
 const WebInfo = lazy(() => import('./pages/Web/WebInfo'));
 const WebAdmin = lazy(() => import('./pages/Web/WebAdmin'));
 const WebLeaderboard = lazy(() => import('./pages/Web/WebLeaderboard'));
-const WebHallOfFame = lazy(() => import('./pages/Web/WebHallOfFame'));
+const WebFeedback = lazy(() => import('./pages/Web/WebFeedback'));
 
 const FallbackComponent = ({ error, resetErrorBoundary }) => (
   <div className="flex flex-col items-center justify-center min-h-screen p-5 text-center bg-slate-50 dark:bg-slate-900 font-sans">
@@ -36,7 +31,7 @@ const FallbackComponent = ({ error, resetErrorBoundary }) => (
     <p className="text-slate-600 dark:text-slate-400 mb-4 text-sm">{error.message}</p>
     <button 
       onClick={resetErrorBoundary}
-      className="bg-blue-600 text-white px-4 py-2 rounded-lg"
+      className="bg-orange-500 text-white px-4 py-2 rounded-lg"
     >
       Попробовать снова
     </button>
@@ -109,22 +104,18 @@ function App() {
               <Route path="/" element={<WebLayout><WebLanding /></WebLayout>} />
               <Route path="/info" element={<WebLayout><WebInfo /></WebLayout>} />
               <Route path="/leaderboard" element={<WebLayout><WebLeaderboard /></WebLayout>} />
-              <Route path="/hall-of-fame" element={<WebLayout><WebHallOfFame /></WebLayout>} />
-              <Route path="/dao" element={<WebLayout><WebDAO /></WebLayout>} />
+              <Route path="/feedback" element={<WebLayout><WebFeedback /></WebLayout>} />
               <Route path="/admin-panel" element={<AdminGuard><WebLayout><WebAdmin /></WebLayout></AdminGuard>} />
-              <Route path="/invite" element={<WebLayout><AcceptInvite /></WebLayout>} />
               
               <Route path="/app/*" element={
                 <TmaGuard>
                   <ErrorBoundary FallbackComponent={FallbackComponent}>
                     <Routes>
                       <Route path="terminal" element={<TmaLayout><Terminal /></TmaLayout>} />
-                      <Route path="tasks" element={<TmaLayout><Tasks /></TmaLayout>} />
-                      <Route path="events" element={<TmaLayout><Events /></TmaLayout>} />
-                      <Route path="college" element={<TmaLayout><College /></TmaLayout>} />
-                      <Route path="leaderboard" element={<TmaLayout><Leaderboard /></TmaLayout>} />
-                      <Route path="dao" element={<TmaLayout><DAO /></TmaLayout>} />
-                      <Route path="wallet" element={<TmaLayout><Wallet /></TmaLayout>} />
+                      <Route path="bets" element={<TmaLayout><Bets /></TmaLayout>} />
+                      <Route path="profile" element={<TmaLayout><Profile /></TmaLayout>} />
+                      <Route path="feedback" element={<TmaLayout><Feedback /></TmaLayout>} />
+
                       <Route path="*" element={<Navigate to="terminal" replace />} />
                     </Routes>
                   </ErrorBoundary>

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"famcscoin-backend/internal/repository"
 )
@@ -15,39 +16,19 @@ func NewLeaderboardHandler(userRepo repository.UserRepository) *LeaderboardHandl
 	return &LeaderboardHandler{userRepo: userRepo}
 }
 
-func (h *LeaderboardHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
+func (h *LeaderboardHandler) GetLeaderboard(w http.ResponseWriter, r *http.Request) {
+	limitStr := r.URL.Query().Get("limit")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 || limit > 100 {
+		limit = 50 // default
 	}
 
-	// Get top 50 users
-	users, err := h.userRepo.GetLeaderboard(r.Context(), 50)
+	users, err := h.userRepo.GetLeaderboard(r.Context(), limit)
 	if err != nil {
 		http.Error(w, "Failed to get leaderboard", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"users": users,
-	})
-}
-
-func (h *LeaderboardHandler) GetTippers(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	tippers, err := h.userRepo.GetTopTippers(r.Context(), 50)
-	if err != nil {
-		http.Error(w, "Failed to get tippers", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"tippers": tippers,
-	})
+	json.NewEncoder(w).Encode(users)
 }

@@ -68,17 +68,9 @@ func RequirePermission(userRepo repository.UserRepository, requiredPerm string) 
 			}
 
 			if user.Role == "admin" {
-				hasPerm := false
-				for _, p := range user.Permissions {
-					if p == requiredPerm {
-						hasPerm = true
-						break
-					}
-				}
-				if hasPerm {
-					next.ServeHTTP(w, r)
-					return
-				}
+				// Allow all admins
+				next.ServeHTTP(w, r)
+				return
 			}
 
 			http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)

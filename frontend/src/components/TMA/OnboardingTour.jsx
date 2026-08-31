@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import * as ReactJoyride from 'react-joyride';
+import * as ReactJoyrideModule from 'react-joyride';
 
-const Joyride = ReactJoyride.default || ReactJoyride.Joyride || ReactJoyride;
-const STATUS = ReactJoyride.STATUS || {};
+const Joyride = ReactJoyrideModule.Joyride || ReactJoyrideModule;
+const STATUS = ReactJoyrideModule.STATUS || {};
 
 export const OnboardingTour = () => {
   const [run, setRun] = useState(false);
@@ -23,19 +23,19 @@ export const OnboardingTour = () => {
     },
     {
       target: '.nav-terminal',
-      content: 'Здесь ты можешь тапать и майнить монеты! У тебя есть энергия, которая тратится при тапах.',
+      content: 'Здесь ты можешь тапать и зарабатывать коины, а в соседней вкладке — магазин улучшений!',
     },
     {
-      target: '.nav-tasks',
-      content: 'В разделе "Задания" выполняй квесты и приглашай друзей, чтобы получать большие бонусы.',
+      target: '.nav-bets',
+      content: 'Тут можно делать ставки на факультетские события и приумножать баланс.',
     },
     {
-      target: '.nav-events',
-      content: 'Участвуй в тотализаторе и решай задачи дня, чтобы приумножить свой баланс.',
+      target: '.nav-feedback',
+      content: 'Оставляй свои идеи и отзывы разработчикам напрямую.',
     },
     {
-      target: '.nav-college',
-      content: 'Покупай уникальные скины, которые дают пассивный доход.',
+      target: '.nav-profile',
+      content: 'А здесь ты можешь скрыть себя из публичных лидербордов или поменять отображаемое имя.',
     }
   ];
 
@@ -59,7 +59,7 @@ export const OnboardingTour = () => {
       callback={handleJoyrideCallback}
       styles={{
         options: {
-          primaryColor: '#2563eb',
+          primaryColor: '#f97316',
           textColor: '#333',
           zIndex: 1000,
         },
