@@ -5,6 +5,11 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/setupTests.js',
+  },
   build: {
     chunkSizeWarningLimit: 1000,
   },

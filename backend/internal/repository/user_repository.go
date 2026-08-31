@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"log"
 
+	"famcscoin-backend/internal/db"
 	"famcscoin-backend/internal/models"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-)
+	)
 
 type UserRepository interface {
 	GetUserByID(ctx context.Context, id int64) (*models.User, error)
@@ -21,10 +21,10 @@ type UserRepository interface {
 }
 
 type userRepository struct {
-	db *pgxpool.Pool
+	db db.PgxPoolIface
 }
 
-func NewUserRepository(db *pgxpool.Pool) UserRepository {
+func NewUserRepository(db db.PgxPoolIface) UserRepository {
 	return &userRepository{db: db}
 }
 

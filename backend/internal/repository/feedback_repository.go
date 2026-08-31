@@ -3,9 +3,9 @@ package repository
 import (
 	"context"
 
+	"famcscoin-backend/internal/db"
 	"famcscoin-backend/internal/models"
-	"github.com/jackc/pgx/v5/pgxpool"
-)
+	)
 
 type FeedbackRepository interface {
 	GetFeedbacks(ctx context.Context) ([]models.Feedback, error)
@@ -14,10 +14,10 @@ type FeedbackRepository interface {
 }
 
 type feedbackRepository struct {
-	db *pgxpool.Pool
+	db db.PgxPoolIface
 }
 
-func NewFeedbackRepository(db *pgxpool.Pool) FeedbackRepository {
+func NewFeedbackRepository(db db.PgxPoolIface) FeedbackRepository {
 	return &feedbackRepository{db: db}
 }
 

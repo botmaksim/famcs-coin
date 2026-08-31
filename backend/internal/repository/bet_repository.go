@@ -7,9 +7,9 @@ import (
 	"log"
 	"time"
 
+	"famcscoin-backend/internal/db"
 	"famcscoin-backend/internal/models"
-	"github.com/jackc/pgx/v5/pgxpool"
-)
+	)
 
 type BetRepository interface {
 	GetBets(ctx context.Context, userID int64) ([]models.BetEvent, error)
@@ -19,10 +19,10 @@ type BetRepository interface {
 }
 
 type betRepository struct {
-	db *pgxpool.Pool
+	db db.PgxPoolIface
 }
 
-func NewBetRepository(db *pgxpool.Pool) BetRepository {
+func NewBetRepository(db db.PgxPoolIface) BetRepository {
 	return &betRepository{db: db}
 }
 

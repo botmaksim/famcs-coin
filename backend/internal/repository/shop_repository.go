@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"log"
 
+	"famcscoin-backend/internal/db"
 	"famcscoin-backend/internal/models"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-)
+	)
 
 type ShopRepository interface {
 	GetItems(ctx context.Context, userID int64) ([]models.ShopItem, error)
@@ -19,10 +19,10 @@ type ShopRepository interface {
 }
 
 type shopRepository struct {
-	db *pgxpool.Pool
+	db db.PgxPoolIface
 }
 
-func NewShopRepository(db *pgxpool.Pool) ShopRepository {
+func NewShopRepository(db db.PgxPoolIface) ShopRepository {
 	return &shopRepository{db: db}
 }
 
