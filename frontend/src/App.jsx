@@ -105,7 +105,7 @@ function App() {
               <Route path="/info" element={<WebLayout><WebInfo /></WebLayout>} />
               <Route path="/leaderboard" element={<WebLayout><WebLeaderboard /></WebLayout>} />
               <Route path="/feedback" element={<WebLayout><WebFeedback /></WebLayout>} />
-              <Route path="/admin-panel" element={<AdminGuard><WebLayout><WebAdmin /></WebLayout></AdminGuard>} />
+              <Route path="/admin-panel" element={<WebLayout><WebAdmin /></WebLayout>} />
               
               <Route path="/app/*" element={
                 <TmaGuard>
@@ -115,7 +115,6 @@ function App() {
                       <Route path="bets" element={<TmaLayout><Bets /></TmaLayout>} />
                       <Route path="profile" element={<TmaLayout><Profile /></TmaLayout>} />
                       <Route path="feedback" element={<TmaLayout><Feedback /></TmaLayout>} />
-
                       <Route path="*" element={<Navigate to="terminal" replace />} />
                     </Routes>
                   </ErrorBoundary>

@@ -26,7 +26,7 @@ const TmaHeader = () => {
           <Trophy size={18} />
         </button>
         <div className="flex items-center gap-1.5 font-bold text-blue-600 text-lg bg-blue-50 dark:bg-slate-800/50 px-3 py-1 rounded-full shadow-sm ml-2">
-          <img src="/icons/coin.png" alt="coin" className="w-5 h-5 object-contain" /> 
+          <img src="/famcscoin.png" alt="coin" className="w-5 h-5 object-contain" /> 
           {user?.balance ? Math.floor(user.balance) : 0}
         </div>
       </div>

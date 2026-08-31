@@ -2,11 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const navItems = [
-  { path: '/app/terminal', label: 'Тап', icon: '🚀', className: 'nav-terminal' },
-  { path: '/app/tasks', label: 'Задания', icon: '📝', className: 'nav-tasks' },
-  { path: '/app/events', label: 'Ивенты', icon: '🎉', className: 'nav-events' },
-  { path: '/app/college', label: 'Универ', icon: '🎓', className: 'nav-college' },
-  { path: '/app/dao', label: 'DAO', icon: '🏛️', className: 'nav-dao' }
+  { path: '/app/terminal', label: 'Терминал', icon: '🚀', className: 'nav-terminal' }
 ];
 
 const TmaBottomNav = () => {
@@ -21,7 +17,7 @@ const TmaBottomNav = () => {
           <div 
             key={item.path}
             onClick={() => navigate(item.path)}
-            className={`flex flex-col items-center gap-1 p-2 cursor-pointer transition-all duration-200 ${item.className} ${isActive ? 'text-blue-600 scale-110' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`flex flex-col items-center gap-1 p-2 cursor-pointer transition-all duration-200 ${item.className} ${isActive ? 'text-orange-500 scale-110' : 'text-slate-400 hover:text-slate-600'}`}
           >
             <span className="text-2xl drop-shadow-sm">{item.icon}</span>
             <span className="text-[10px] font-semibold tracking-wide">{item.label}</span>
