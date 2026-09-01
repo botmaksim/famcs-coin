@@ -15,14 +15,14 @@ func TestUserRepository_GetLeaderboard(t *testing.T) {
 
 	repo := NewUserRepository(mock)
 
-	rows := mock.NewRows([]string{"tg_id", "username", "custom_name", "avatar_url", "balance"}).
-		AddRow(int64(1), "user1", nil, nil, 100.0)
+	rows := mock.NewRows([]string{"tg_id", "username", "custom_name", "avatar_url", "balance", "passive_income"}).
+		AddRow(int64(1), "user1", nil, nil, 100.0, 50.0)
 
-	mock.ExpectQuery("^SELECT tg_id, username, custom_name, avatar_url, balance FROM users WHERE is_hidden = FALSE ORDER BY balance DESC LIMIT \\$1$").
+	mock.ExpectQuery("^SELECT tg_id, username, custom_name, avatar_url, balance, passive_income FROM users WHERE is_hidden = FALSE ORDER BY balance DESC LIMIT \\$1$").
 		WithArgs(10).
 		WillReturnRows(rows)
 
-	users, err := repo.GetLeaderboard(context.Background(), 10)
+	users, err := repo.GetLeaderboard(context.Background(), 10, "balance")
 	assert.NoError(t, err)
 	assert.Len(t, users, 1)
 }

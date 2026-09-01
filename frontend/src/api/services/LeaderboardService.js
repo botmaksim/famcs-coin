@@ -1,6 +1,6 @@
 import apiClient from '../client';
 
 export const LeaderboardService = {
-  getLeaderboard: () => apiClient.get('/leaderboard'),
+  getLeaderboard: (sortBy = 'balance') => apiClient.get(`/leaderboard?sort=${sortBy}`),
   getWebLeaderboard: () => apiClient.get('/web/leaderboard'),
 };

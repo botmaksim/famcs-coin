@@ -31,7 +31,7 @@ func (m *MockUserRepository) UpdateRole(ctx context.Context, id int64, role stri
 	return m.Called(ctx, id, role).Error(0)
 }
 
-func (m *MockUserRepository) GetLeaderboard(ctx context.Context, limit int) ([]models.User, error) {
+func (m *MockUserRepository) GetLeaderboard(ctx context.Context, limit int, sortBy string) ([]models.User, error) {
 	args := m.Called(ctx, limit)
 	if args.Get(0) != nil {
 		return args.Get(0).([]models.User), args.Error(1)

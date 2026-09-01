@@ -15,7 +15,7 @@ type UserRepository interface {
 	CreateUser(ctx context.Context, user *models.User) error
 	UpdateSettings(ctx context.Context, id int64, customName *string, isHidden bool) error
 	UpdateRole(ctx context.Context, id int64, role string) error
-	GetLeaderboard(ctx context.Context, limit int) ([]models.User, error)
+	GetLeaderboard(ctx context.Context, limit int, sortBy string) ([]models.User, error)
 	UpdateBalance(ctx context.Context, tx pgx.Tx, userID int64, amount float64, txType string) error
 	ProcessClick(ctx context.Context, userID int64, coins float64, energyCost int) error
 }
@@ -64,8 +64,13 @@ func (r *userRepository) UpdateRole(ctx context.Context, id int64, role string) 
 	return err
 }
 
-func (r *userRepository) GetLeaderboard(ctx context.Context, limit int) ([]models.User, error) {
-	query := `SELECT tg_id, username, custom_name, avatar_url, balance FROM users WHERE is_hidden = FALSE ORDER BY balance DESC LIMIT $1`
+func (r *userRepository) GetLeaderboard(ctx context.Context, limit int, sortBy string) ([]models.User, error) {
+	orderClause := "balance DESC"
+	if sortBy == "income" {
+		orderClause = "passive_income DESC"
+	}
+
+	query := fmt.Sprintf(`SELECT tg_id, username, custom_name, avatar_url, balance, passive_income FROM users WHERE is_hidden = FALSE ORDER BY %s LIMIT $1`, orderClause)
 	rows, err := r.db.Query(ctx, query, limit)
 	if err != nil {
 		return nil, err
@@ -75,7 +80,7 @@ func (r *userRepository) GetLeaderboard(ctx context.Context, limit int) ([]model
 	users := []models.User{}
 	for rows.Next() {
 		var u models.User
-		if err := rows.Scan(&u.TgID, &u.Username, &u.CustomName, &u.AvatarURL, &u.Balance); err != nil {
+		if err := rows.Scan(&u.TgID, &u.Username, &u.CustomName, &u.AvatarURL, &u.Balance, &u.PassiveIncome); err != nil {
 			log.Println("Error scanning leaderboard row:", err)
 			continue
 		}

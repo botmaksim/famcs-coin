@@ -58,7 +58,11 @@ const WebLeaderboard = () => {
                     </td>
                     <td className="p-5 flex items-center gap-4">
                       <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-500 flex justify-center items-center overflow-hidden font-bold text-xl">
-                        {item.custom_name ? item.custom_name[0].toUpperCase() : item.username[0].toUpperCase()}
+                        {item.avatar_url ? (
+                           <img src={item.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                        ) : (
+                           (item.custom_name || item.username || 'U').charAt(0).toUpperCase()
+                        )}
                       </div>
                       <div>
                         <div className="text-lg font-bold text-slate-800 dark:text-white">

@@ -23,7 +23,12 @@ func (h *LeaderboardHandler) GetLeaderboard(w http.ResponseWriter, r *http.Reque
 		limit = 50 // default
 	}
 
-	users, err := h.userRepo.GetLeaderboard(r.Context(), limit)
+	sortBy := r.URL.Query().Get("sort")
+	if sortBy != "income" {
+		sortBy = "balance" // default
+	}
+
+	users, err := h.userRepo.GetLeaderboard(r.Context(), limit, sortBy)
 	if err != nil {
 		http.Error(w, "Failed to get leaderboard", http.StatusInternalServerError)
 		return
