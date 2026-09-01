@@ -108,15 +108,7 @@ const Terminal = () => {
     }
   };
 
-  if (loading) return (
-    <div className="flex flex-col h-full p-5">
-      <Skeleton className="w-1/2 h-6 mx-auto mb-2" />
-      <Skeleton className="w-full h-2.5 rounded-full mb-10" />
-      <div className="flex-1 flex justify-center items-center">
-        <Skeleton className="w-48 h-48 rounded-full" />
-      </div>
-    </div>
-  );
+  if (loading) return null;
   
   if (error) return <div className="text-center pt-12 text-red-500 font-medium">{error}</div>;
 
