@@ -22,7 +22,12 @@ func NewFeedbackRepository(db db.PgxPoolIface) FeedbackRepository {
 }
 
 func (r *feedbackRepository) GetFeedbacks(ctx context.Context) ([]models.Feedback, error) {
-	query := `SELECT id, user_id, text, status, created_at FROM feedbacks ORDER BY created_at DESC`
+	query := `
+		SELECT f.id, f.user_id, u.username, f.text, f.status, f.created_at 
+		FROM feedbacks f
+		JOIN users u ON f.user_id = u.tg_id
+		ORDER BY f.created_at DESC
+	`
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -32,7 +37,7 @@ func (r *feedbackRepository) GetFeedbacks(ctx context.Context) ([]models.Feedbac
 	feedbacks := []models.Feedback{}
 	for rows.Next() {
 		var f models.Feedback
-		if err := rows.Scan(&f.ID, &f.UserID, &f.Text, &f.Status, &f.CreatedAt); err == nil {
+		if err := rows.Scan(&f.ID, &f.UserID, &f.Username, &f.Text, &f.Status, &f.CreatedAt); err == nil {
 			feedbacks = append(feedbacks, f)
 		}
 	}

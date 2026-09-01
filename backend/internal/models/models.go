@@ -40,6 +40,7 @@ type ShopItem struct {
 
 type UserUpgrade struct {
 	UserID    int64 `json:"user_id"`
+	Username    string    `json:"username"`
 	UpgradeID int   `json:"upgrade_id"`
 	Quantity  int   `json:"quantity"`
 }
@@ -47,6 +48,7 @@ type UserUpgrade struct {
 type Transaction struct {
 	ID         int64     `json:"id"`
 	UserID     int64     `json:"user_id"`
+	Username    string    `json:"username"`
 	Amount     float64   `json:"amount"`
 	Type       string    `json:"type"`
 	CreatedAt  time.Time `json:"created_at"`
@@ -71,6 +73,7 @@ type BetEvent struct {
 type UserBet struct {
 	ID            int       `json:"id"`
 	UserID        int64     `json:"user_id"`
+	Username    string    `json:"username"`
 	EventID       int       `json:"event_id"`
 	OptionIndex   int       `json:"option_index"`
 	Amount        float64   `json:"amount"`
@@ -81,6 +84,7 @@ type UserBet struct {
 type Feedback struct {
 	ID          int       `json:"id"`
 	UserID      int64     `json:"user_id"`
+	Username    string    `json:"username"`
 	Text        string    `json:"text"`
 	Status      string    `json:"status"`
 	CreatedAt   time.Time `json:"created_at"`

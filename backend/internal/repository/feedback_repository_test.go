@@ -17,10 +17,10 @@ func TestFeedbackRepository_GetFeedbacks(t *testing.T) {
 	repo := NewFeedbackRepository(mock)
 	now := time.Now()
 
-	rows := mock.NewRows([]string{"id", "user_id", "text", "status", "created_at"}).
-		AddRow(1, int64(123), "Good app", "new", now)
+	rows := mock.NewRows([]string{"id", "user_id", "username", "text", "status", "created_at"}).
+		AddRow(1, int64(123), "testuser", "Good app", "new", now)
 
-	mock.ExpectQuery("^SELECT id, user_id, text, status, created_at FROM feedbacks ORDER BY created_at DESC$").
+	mock.ExpectQuery("^SELECT f.id, f.user_id, u.username, f.text, f.status, f.created_at").
 		WillReturnRows(rows)
 
 	feedbacks, err := repo.GetFeedbacks(context.Background())
