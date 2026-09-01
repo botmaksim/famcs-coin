@@ -9,5 +9,6 @@ FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=builder /app/famcscoin-api .
+COPY --from=builder /app/internal/db/migrations ./internal/db/migrations
 EXPOSE 8083
 CMD ["./famcscoin-api"]
