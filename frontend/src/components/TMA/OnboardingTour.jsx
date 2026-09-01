@@ -46,9 +46,11 @@ export const OnboardingTour = () => {
     }
   };
 
+  if (!run) return null;
+
   return (
     <Joyride
-      steps={steps}
+      steps={steps.map(s => ({ ...s, disableBeacon: true }))}
       run={run}
       continuous
       showSkipButton
