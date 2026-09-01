@@ -9,9 +9,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// StartEconomyWorker запускает фоновый процесс начисления пассивного дохода и восстановления энергии
+// StartEconomyWorker runs background passive income and energy regeneration
 func StartEconomyWorker(ctx context.Context, pool *pgxpool.Pool) {
-	// Для тестов можно сделать тики раз в 10 секунд. В проде лучше раз в 1 минуту.
 	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
 
@@ -32,15 +31,12 @@ func processEconomyTick(pool *pgxpool.Pool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Обновляем настройки каждый тик (LiveOps)
+	// Update settings cache on each tick
 	if err := config.GlobalSettings.LoadFromDB(ctx, pool); err != nil {
-		log.Printf("⚠️ [Economy Worker] Failed to update settings cache: %v", err)
+		log.Printf("Failed to update settings cache: %v", err)
 	}
 
-	// Массовый UPDATE:
-	// 1. Прибавляет к balance 1/60 от passive_income (т.к. тик раз в минуту, а passive_income — в час)
-	// 2. Восстанавливает energy на 10 единиц, но не превышая max_energy
-	// Обновляем только тех, кому это действительно нужно (доход > 0 или энергия не полная)
+	// Mass update passive income and restore energy
 	query := `
 		UPDATE users 
 		SET 

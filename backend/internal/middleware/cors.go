@@ -9,7 +9,7 @@ func CORSMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-		// Если это Preflight запрос от браузера (OPTIONS), сразу отвечаем 200 OK
+		// Handle preflight OPTIONS request
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return

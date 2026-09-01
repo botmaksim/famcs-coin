@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -41,19 +40,18 @@ func main() {
 	}
 	defer database.Close()
 
-	// Запускаем миграции
-	// В реальном приложении пути к миграциям стоит передавать конфигом, либо эмбеддить
+	// Run migrations
 	err = database.RunAllMigrations("./internal/db/migrations")
 	if err != nil {
 		log.Printf("Migration execution error: %v", err)
 	}
 
-	// Загружаем настройки в кэш при старте
+	// Load initial settings cache
 	if err := config.GlobalSettings.LoadFromDB(context.Background(), database.Pool); err != nil {
 		log.Printf("Failed to load initial settings: %v", err)
 	}
 
-	// Воркеры
+	// Workers
 	go worker.StartEconomyWorker(context.Background(), database.Pool)
 
 	// WebSockets Hub
@@ -70,11 +68,11 @@ func main() {
 		log.Println("Telegram bot is running and listening for /start...")
 	}
 
-	// Настраиваем роутер
+	// Configure router
 	router := api.SetupRouter(database.Pool, botToken)
 
-	fmt.Printf("FAMCS Coin API запущен на порту %s\n", port)
+	log.Printf("FAMCS Coin API started on port %s", port)
 	if err := http.ListenAndServe(":"+port, router); err != nil {
-		log.Fatalf("Ошибка при запуске сервера: %v", err)
+		log.Fatalf("Server launch error: %v", err)
 	}
 }
