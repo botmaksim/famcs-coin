@@ -10,7 +10,7 @@ const WebLeaderboard = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const res = await LeaderboardService.getWebPlayers();
+        const res = await LeaderboardService.getWebLeaderboard();
         setPlayers(res.data || []);
       } catch (error) {
         console.error('Failed to fetch leaderboards:', error);

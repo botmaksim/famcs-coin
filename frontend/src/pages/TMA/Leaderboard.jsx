@@ -8,7 +8,8 @@ const Leaderboard = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await LeaderboardService.getUsers();
+        setLoading(true);
+        const res = await LeaderboardService.getLeaderboard();
         setUsers(res.data || []);
       } catch (err) {
         console.error("Failed to fetch leaderboard", err);
