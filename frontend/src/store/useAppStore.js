@@ -7,11 +7,7 @@ export const useAppStore = create((set) => ({
 
   // Shared Data State
   leaderboardPlayers: [],
-  leaderboardSquads: [],
-  leaderboardTippers: [],
   setLeaderboardPlayers: (players) => set({ leaderboardPlayers: players }),
-  setLeaderboardSquads: (squads) => set({ leaderboardSquads: squads }),
-  setLeaderboardTippers: (tippers) => set({ leaderboardTippers: tippers }),
 
   // Real-time Event Data
   events: [],

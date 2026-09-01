@@ -55,7 +55,7 @@ const Bets = () => {
   return (
     <div className="flex flex-col h-full p-5 pb-24 overflow-y-auto">
       <h2 className="text-3xl font-black mb-1 text-slate-800 dark:text-white drop-shadow-sm flex items-center gap-2">
-        <span className="text-3xl">🎲</span> Тотализатор
+        <img src="/icon_bets.png" alt="Тотализатор" className="w-8 h-8" /> Тотализатор
       </h2>
       <p className="text-slate-500 mb-6 text-sm font-medium">Ставь коины на факультетские события и забирай банк!</p>
 

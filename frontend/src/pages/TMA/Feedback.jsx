@@ -24,7 +24,7 @@ const Feedback = () => {
   return (
     <div className="flex flex-col h-full p-5 pb-24 overflow-y-auto">
       <h2 className="text-3xl font-black mb-1 text-slate-800 dark:text-white drop-shadow-sm flex items-center gap-2">
-        <span className="text-3xl">💡</span> Идеи
+        <img src="/icon_feedback.png" alt="Идеи" className="w-8 h-8" /> Идеи и предложения
       </h2>
       <p className="text-slate-500 mb-6 text-sm font-medium">Предложи идею для приложения или расскажи о баге напрямую разработчикам!</p>
 

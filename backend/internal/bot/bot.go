@@ -55,14 +55,14 @@ func (b *Bot) Start(ctx context.Context) {
 }
 
 func (b *Bot) handleStartCommand(ctx context.Context, msg *tgbotapi.Message) {
-	text := "Привет! Добро пожаловать в факультетский кликер FAMCS Coin 🦝\n\nЗдесь ты можешь тапать, зарабатывать коины, покупать пассивный доход и делать ставки на факультетские события!\n\nЖми кнопку ниже, чтобы войти в приложение."
+	text := "Привет! Добро пожаловать в факультетский кликер FAMCS Coin.\n\nЗдесь ты можешь тапать, зарабатывать коины, покупать пассивный доход и делать ставки на факультетские события!\n\nЖми кнопку ниже, чтобы войти в приложение."
 	reply := tgbotapi.NewMessage(msg.Chat.ID, text)
 	
 	// TMA WebApp URL
 	webAppURL := "https://t.me/famcs_coin_bot/app" 
 	
 	btn := tgbotapi.InlineKeyboardButton{
-		Text: "Играть 🚀",
+		Text: "Играть",
 		URL: &webAppURL,
 	}
 	reply.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(

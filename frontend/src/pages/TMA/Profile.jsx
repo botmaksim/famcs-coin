@@ -27,8 +27,8 @@ const Profile = () => {
 
   return (
     <div className="flex flex-col h-full p-5 pb-24 overflow-y-auto">
-      <h2 className="text-3xl font-black mb-6 text-slate-800 dark:text-white drop-shadow-sm flex items-center gap-2">
-        <span className="text-3xl">👤</span> Профиль
+      <h2 className="text-3xl font-black mb-6 text-slate-800 dark:text-white drop-shadow-sm">
+        Профиль
       </h2>
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center gap-3 mb-6">

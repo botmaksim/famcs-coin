@@ -15,12 +15,12 @@ func StartEconomyWorker(ctx context.Context, pool *pgxpool.Pool) {
 	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
 
-	log.Println("🛠 Economy Worker started. Tick interval: 60s")
+	log.Println("[Economy Worker] Started. Tick interval: 60s")
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("🛠 Economy Worker stopped.")
+			log.Println("[Economy Worker] Stopped.")
 			return
 		case <-ticker.C:
 			processEconomyTick(pool)
@@ -57,6 +57,6 @@ func processEconomyTick(pool *pgxpool.Pool) {
 
 	rowsAffected := res.RowsAffected()
 	if rowsAffected > 0 {
-		log.Printf("💸 [Economy Worker] Successfully updated %d users (passive income & energy restored)", rowsAffected)
+		log.Printf("[Economy Worker] Successfully updated %d users (passive income & energy restored)", rowsAffected)
 	}
 }

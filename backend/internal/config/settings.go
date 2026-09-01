@@ -2,9 +2,7 @@ package config
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"

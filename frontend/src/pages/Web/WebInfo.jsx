@@ -8,8 +8,8 @@ const WebInfo = () => {
 
         {/* Section 1: Gameplay */}
         <section className="bg-[var(--card-bg)] p-6 rounded-xl mb-8 border border-[var(--glass-border)] shadow-sm backdrop-blur-md">
-          <h2 className="mt-0 border-b border-blue-200/30 dark:border-blue-800/30 pb-2.5 text-blue-600 dark:text-blue-400 font-bold text-2xl">
-            <span className="inline-block mr-2 align-middle text-2xl">🎮</span> Игровой процесс и возможности
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
+            Игровой процесс и возможности
           </h2>
           <p className="text-slate-600 dark:text-slate-300 my-4 text-lg">
             FAMCS Coin — это экономический симулятор и социальный эксперимент студентов ФПМИ. 

@@ -12,7 +12,7 @@ const WebAdmin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const [resolveEventId, setResolveEventId] = useState("");
-  const [resolveOption, setResolveOption] = useState("A");
+  const [resolveOption, setResolveOption] = useState("0");
 
   // Check auth state on mount
   useEffect(() => {
@@ -40,10 +40,10 @@ const WebAdmin = () => {
 
   const handleResolveBet = async (e) => {
     e.preventDefault();
-    if (!resolveEventId || !resolveOption) return;
+    if (!resolveEventId || resolveOption === "") return;
 
     try {
-      await AdminService.resolveBet(parseInt(resolveEventId), resolveOption);
+      await AdminService.closeBet(parseInt(resolveEventId), parseInt(resolveOption));
       alert("Событие успешно завершено!");
       setResolveEventId("");
     } catch (err) {
@@ -130,9 +130,8 @@ const WebAdmin = () => {
             onChange={(e) => setResolveOption(e.target.value)}
             className="p-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-orange-500"
           >
-            <option value="A">Исход A (Победа первого варианта)</option>
-            <option value="B">Исход B (Победа второго варианта)</option>
-            <option value="cancel">Отменить (Возврат всего пула игрокам)</option>
+            <option value="0">Вариант 1 (Победа первого исхода)</option>
+            <option value="1">Вариант 2 (Победа второго исхода)</option>
           </select>
           <button
             type="submit"
