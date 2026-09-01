@@ -122,6 +122,7 @@ func validateInitData(initData, botToken string) (bool, int64, string, string) {
 		ID        int64  `json:"id"`
 		Username  string `json:"username"`
 		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
 		PhotoURL  string `json:"photo_url"`
 	}
 	if err := json.Unmarshal([]byte(userJSON), &tgUser); err != nil {
@@ -129,9 +130,9 @@ func validateInitData(initData, botToken string) (bool, int64, string, string) {
 		return false, 0, "", ""
 	}
 
-	name := tgUser.Username
+	name := strings.TrimSpace(tgUser.FirstName + " " + tgUser.LastName)
 	if name == "" {
-		name = tgUser.FirstName
+		name = tgUser.Username
 	}
 
 	log.Printf("[AUTH DEBUG] Validation successful for UserID: %d (%s)", tgUser.ID, name)
@@ -161,12 +162,13 @@ func TMAAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 			}
 
 			user, err := userRepo.GetUserByID(r.Context(), userID)
+			var avatarPtr *string
+			if photoURL != "" {
+				avatarPtr = &photoURL
+			}
+			
 			if err != nil || user == nil {
 				// Initial login, create user
-				var avatarPtr *string
-				if photoURL != "" {
-					avatarPtr = &photoURL
-				}
 				user = &models.User{
 					TgID:      userID,
 					Username:  username,
@@ -178,6 +180,26 @@ func TMAAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 				}
 				if err := userRepo.CreateUser(r.Context(), user); err != nil {
 					log.Printf("[AUTH] Failed to auto-create user %d: %v", userID, err)
+				}
+			} else {
+				// Check if we need to update avatar or username
+				needsUpdate := user.Username != username
+				if !needsUpdate {
+					oldAvatar := ""
+					if user.AvatarURL != nil {
+						oldAvatar = *user.AvatarURL
+					}
+					if oldAvatar != photoURL {
+						needsUpdate = true
+					}
+				}
+				
+				if needsUpdate {
+					user.Username = username
+					user.AvatarURL = avatarPtr
+					if err := userRepo.CreateUser(r.Context(), user); err != nil {
+						log.Printf("[AUTH] Failed to update user %d profile: %v", userID, err)
+					}
 				}
 			}
 
