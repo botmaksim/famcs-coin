@@ -11,17 +11,17 @@ const apiClient = axios.create({
 // Interceptor to attach Telegram initData
 apiClient.interceptors.request.use(
   (config) => {
-    // Priority 1: Web Admin auth token
-    if (localStorage.getItem('web_admin_auth')) {
+    // Priority 1: TMA initData (Always use this if inside Telegram)
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+      config.headers.Authorization = `tma ${window.Telegram.WebApp.initData}`;
+    } 
+    // Priority 2: Web Admin auth token
+    else if (localStorage.getItem('web_admin_auth')) {
       config.headers.Authorization = `Bearer ${localStorage.getItem('web_admin_auth')}`;
     } 
-    // Priority 2: Web User JWT token
+    // Priority 3: Web User JWT token
     else if (localStorage.getItem('web_user_token')) {
       config.headers.Authorization = `Bearer ${localStorage.getItem('web_user_token')}`;
-    } 
-    // Priority 3: TMA initData
-    else if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
-      config.headers.Authorization = `tma ${window.Telegram.WebApp.initData}`;
     } 
     // Priority 4: Dev Mock
     else if (import.meta.env.DEV) {
