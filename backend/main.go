@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"famcscoin-backend/internal/api"
 	"famcscoin-backend/internal/bot"
@@ -28,7 +29,7 @@ func main() {
 	if port == "" {
 		port = "8083"
 	}
-	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
+	botToken := strings.Trim(strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN")), "\"")
 	if botToken == "" {
 		log.Println("WARNING: TELEGRAM_BOT_TOKEN is empty. Auth will fail.")
 	}

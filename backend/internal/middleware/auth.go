@@ -66,6 +66,7 @@ func validateInitData(initData, botToken string) (bool, int64) {
 	}
 	authDate := time.Unix(authDateUnix, 0)
 	if time.Since(authDate) > 24*time.Hour {
+		fmt.Printf("Auth Failed! Session expired. authDate: %v, timeNow: %v\n", authDate, time.Now())
 		return false, 0 // Expired initData
 	}
 
@@ -92,6 +93,8 @@ func validateInitData(initData, botToken string) (bool, int64) {
 	expectedHash := hex.EncodeToString(dataMac.Sum(nil))
 
 	if expectedHash != hash {
+		fmt.Printf("Auth Failed! Expected Hash: %s, Got: %s\n", expectedHash, hash)
+		fmt.Printf("Check if TELEGRAM_BOT_TOKEN is correct and matches the bot.\n")
 		return false, 0
 	}
 
@@ -119,6 +122,7 @@ func TMAAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 			
 			// Fallback to WebAuth logic
 			if authHeader == "" || !strings.HasPrefix(authHeader, "tma ") {
+				fmt.Printf("TMA Auth: Missing or invalid tma header, falling back to WebAuth. Header was: '%s'\n", authHeader)
 				webAuthFunc := WebAuthMiddleware(botToken, userRepo)(next)
 				webAuthFunc.ServeHTTP(w, r)
 				return
