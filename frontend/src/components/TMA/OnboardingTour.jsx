@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import * as ReactJoyrideModule from 'react-joyride';
-
-const Joyride = ReactJoyrideModule.Joyride || ReactJoyrideModule;
-const STATUS = ReactJoyrideModule.STATUS || {};
+import Joyride, { STATUS } from 'react-joyride';
 
 export const OnboardingTour = () => {
   const [run, setRun] = useState(false);
@@ -34,8 +31,8 @@ export const OnboardingTour = () => {
       content: 'Оставляй свои идеи и отзывы разработчикам напрямую.',
     },
     {
-      target: '.nav-profile',
-      content: 'А здесь ты можешь скрыть себя из публичных лидербордов или поменять отображаемое имя.',
+      target: '.tma-header-profile',
+      content: 'Кликай по своему имени или аватарке, чтобы открыть настройки профиля (скрыть себя из лидерборда или сменить имя).',
     }
   ];
 

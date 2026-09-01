@@ -1,18 +1,36 @@
+let audioCtx = null;
+
+const getAudioContext = () => {
+  if (!audioCtx) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) {
+      audioCtx = new AudioContext();
+    }
+  }
+  if (audioCtx?.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+};
+
 export const playTapSound = (enabled) => {
   if (!enabled) return;
   try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
+    
     osc.type = 'sine';
     osc.frequency.setValueAtTime(800, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.1);
+    
     gain.gain.setValueAtTime(0.1, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+    
     osc.start();
     osc.stop(ctx.currentTime + 0.1);
   } catch(e) {}
@@ -21,9 +39,8 @@ export const playTapSound = (enabled) => {
 export const playFanfareSound = (enabled) => {
   if (!enabled) return;
   try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
+    const ctx = getAudioContext();
+    if (!ctx) return;
     const playNote = (freq, startTime, duration) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();

@@ -32,7 +32,7 @@ const Terminal = () => {
   const pendingClicksRef = useRef(0);
   const syncTimeoutRef = useRef(null);
 
-  const handleClick = (e) => {
+  const handlePointerDown = (e) => {
     if (user.energy < 1) return;
 
     playTapSound(soundEnabled);
@@ -41,7 +41,7 @@ const Terminal = () => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const newClick = { id: Date.now(), x, y };
+    const newClick = { id: Date.now() + Math.random(), x, y };
     setClicks(prev => [...prev, newClick]);
 
     setTimeout(() => {
@@ -139,7 +139,10 @@ const Terminal = () => {
 
       {/* Main Clicker Area */}
       <div className="flex justify-center items-center flex-col mb-12">
-        <div className="tap-button relative cursor-pointer active:scale-95 transition-transform" onClick={handleClick}>
+        <div 
+          className="tap-button relative cursor-pointer active:scale-95 transition-transform select-none touch-none" 
+          onPointerDown={handlePointerDown}
+        >
             <AnimatePresence>
               {clicks?.map((click) => (
                 <motion.div
