@@ -15,6 +15,7 @@ import Terminal from './pages/TMA/Terminal';
 import Bets from './pages/TMA/Bets';
 import Profile from './pages/TMA/Profile';
 import Feedback from './pages/TMA/Feedback';
+import Leaderboard from './pages/TMA/Leaderboard';
 
 // Direct Imports (Web Core)
 import WebLanding from './pages/Web/WebLanding';
@@ -113,6 +114,7 @@ function App() {
                     <Routes>
                       <Route path="terminal" element={<TmaLayout><Terminal /></TmaLayout>} />
                       <Route path="bets" element={<TmaLayout><Bets /></TmaLayout>} />
+                      <Route path="leaderboard" element={<TmaLayout><Leaderboard /></TmaLayout>} />
                       <Route path="profile" element={<TmaLayout><Profile /></TmaLayout>} />
                       <Route path="feedback" element={<TmaLayout><Feedback /></TmaLayout>} />
                       <Route path="*" element={<Navigate to="terminal" replace />} />
