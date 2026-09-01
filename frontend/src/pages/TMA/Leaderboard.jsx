@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { LeaderboardService } from '../../api/services/LeaderboardService';
 
 const Leaderboard = () => {
@@ -58,7 +59,12 @@ const Leaderboard = () => {
 
     return (
       <div className="w-1/3 flex flex-col items-center justify-end relative">
-        <div className="flex flex-col items-center z-10 mb-2">
+        <motion.div 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 + (rank * 0.1) }}
+          className="flex flex-col items-center z-10 mb-2"
+        >
           <div className="relative">
             <div className={`rounded-full bg-orange-100 flex items-center justify-center font-bold text-orange-500 overflow-hidden border-4 border-[var(--card-bg)] shadow-md ${rank === 1 ? 'w-20 h-20 text-2xl' : rank === 2 ? 'w-16 h-16 text-xl' : 'w-14 h-14 text-lg'}`}>
               {user.avatar_url ? (
@@ -76,12 +82,17 @@ const Leaderboard = () => {
             <img src="/famcscoin.png" className="w-3 h-3" />
             {sortBy === 'balance' ? Math.floor(user.balance).toLocaleString() : `+${Math.floor(user.passive_income)}/ч`}
           </div>
-        </div>
+        </motion.div>
         
         {/* The Pedestal Block */}
-        <div className={`w-full bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-xl ${heightMap[rank]} shadow-[inset_0_4px_10px_rgba(255,255,255,0.3)] flex justify-center pt-2`}>
+        <motion.div 
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          transition={{ duration: 0.5, delay: rank * 0.15, type: "spring" }}
+          className={`w-full bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-xl ${heightMap[rank]} shadow-[inset_0_4px_10px_rgba(255,255,255,0.3)] flex justify-center pt-2 overflow-hidden`}
+        >
            <span className="text-white/80 font-black text-2xl drop-shadow-sm">{rank}</span>
-        </div>
+        </motion.div>
       </div>
     );
   };
@@ -125,23 +136,31 @@ const Leaderboard = () => {
 
           {/* List for Rest */}
           <div className="flex flex-col gap-3">
-            {rest?.map((u, i) => (
-              <div key={i} className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
-                <div className="font-bold text-slate-400 w-8 text-center text-sm">#{i + 4}</div>
-                <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-500 flex items-center justify-center font-bold overflow-hidden">
-                  {u.avatar_url ? (
-                     <img src={u.avatar_url} alt="avatar" className="w-full h-full object-cover" />
-                  ) : (
-                     (u.custom_name || u.username || 'U').charAt(0).toUpperCase()
-                  )}
-                </div>
-                <div className="flex-1 font-bold dark:text-white truncate text-sm">{u.custom_name || u.username}</div>
-                <div className="flex items-center gap-1.5 text-orange-500 font-bold text-sm bg-orange-50 dark:bg-slate-900/50 px-2 py-1 rounded-lg">
-                  <img src="/famcscoin.png" className="w-4 h-4" />
-                  {sortBy === 'balance' ? Math.floor(u.balance).toLocaleString() : `+${Math.floor(u.passive_income)}/ч`}
-                </div>
-              </div>
-            ))}
+            <AnimatePresence>
+              {rest?.map((u, i) => (
+                <motion.div 
+                  key={u.tg_id || i}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: i * 0.05 }}
+                  className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm"
+                >
+                  <div className="font-bold text-slate-400 w-8 text-center text-sm">#{i + 4}</div>
+                  <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-500 flex items-center justify-center font-bold overflow-hidden">
+                    {u.avatar_url ? (
+                       <img src={u.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                    ) : (
+                       (u.custom_name || u.username || 'U').charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1 font-bold dark:text-white truncate text-sm">{u.custom_name || u.username}</div>
+                  <div className="flex items-center gap-1.5 text-orange-500 font-bold text-sm bg-orange-50 dark:bg-slate-900/50 px-2 py-1 rounded-lg">
+                    <img src="/famcscoin.png" className="w-4 h-4" />
+                    {sortBy === 'balance' ? Math.floor(u.balance).toLocaleString() : `+${Math.floor(u.passive_income)}/ч`}
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
             {users.length === 0 && (
               <div className="text-center text-slate-500 py-10">Тут пока пусто</div>
             )}
