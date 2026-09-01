@@ -15,7 +15,7 @@ const TmaHeader = () => {
         </div>
         <div>
           <div className="font-bold text-sm text-[var(--text-color)]">{user?.username || 'Студент'}</div>
-          <div className="text-xs text-slate-500">{user?.squad_id ? `Сквад #${user.squad_id}` : 'Без сквада'}</div>
+          <div className="text-xs text-orange-400 font-medium">{user?.role === 'admin' || user?.role === 'superadmin' ? 'Администратор' : 'Студент ФКНС'}</div>
         </div>
       </div>
       <div className="flex items-center gap-2">

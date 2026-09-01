@@ -67,7 +67,7 @@ func main() {
 		log.Printf("Failed to initialize telegram bot: %v", err)
 	} else {
 		go tgBot.Start(context.Background())
-		log.Println("Telegram bot is running for /start and /tip logic...")
+		log.Println("Telegram bot is running and listening for /start...")
 	}
 
 	// Настраиваем роутер
