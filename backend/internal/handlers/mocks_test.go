@@ -32,7 +32,7 @@ func (m *MockUserRepository) UpdateRole(ctx context.Context, id int64, role stri
 }
 
 func (m *MockUserRepository) GetLeaderboard(ctx context.Context, limit int, sortBy string) ([]models.User, error) {
-	args := m.Called(ctx, limit)
+	args := m.Called(ctx, limit, sortBy)
 	if args.Get(0) != nil {
 		return args.Get(0).([]models.User), args.Error(1)
 	}

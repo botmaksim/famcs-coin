@@ -17,7 +17,7 @@ func TestLeaderboardHandler_GetLeaderboard(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/leaderboard", nil)
 		mockUsers := []models.User{{TgID: 1, Balance: 100}}
-		mockRepo.On("GetLeaderboard", mock.Anything, 50).Return(mockUsers, nil).Once()
+		mockRepo.On("GetLeaderboard", mock.Anything, 50, "balance").Return(mockUsers, nil).Once()
 
 		w := httptest.NewRecorder()
 		handler.GetLeaderboard(w, req)
