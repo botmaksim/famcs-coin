@@ -12,17 +12,7 @@ export const useUser = () => {
   const { data: userQuery, isLoading: loading, error, refetch: fetchProfile } = useQuery({
     queryKey: ['userProfile'],
     queryFn: async () => {
-      const tg = window.Telegram?.WebApp;
-      const tgUser = tg?.initDataUnsafe?.user || {};
-      
-      const payload = {
-        first_name: tgUser.first_name || '',
-        last_name: tgUser.last_name || '',
-        username: tgUser.username || '',
-        photo_url: tgUser.photo_url || ''
-      };
-
-      const response = await UserService.getProfile(payload);
+      const response = await UserService.getProfile();
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

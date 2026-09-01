@@ -1,7 +1,7 @@
 import apiClient from '../client';
 
 export const UserService = {
-  getProfile: (payload) => apiClient.post('/user/profile', payload),
+  getProfile: () => apiClient.get('/user/profile'),
   click: (count) => apiClient.post('/user/click', { count }),
-  updateSettings: (settings) => apiClient.put('/user/settings', settings),
+  updateSettings: (settings) => apiClient.post('/user/settings', settings),
 };
