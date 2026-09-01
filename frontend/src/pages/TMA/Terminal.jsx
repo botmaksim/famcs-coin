@@ -98,6 +98,16 @@ const Terminal = () => {
     }
   };
 
+  const handleSell = async (id) => {
+    try {
+      await ShopService.sellItem(id);
+      await fetchProfile();
+      await fetchShop();
+    } catch (e) {
+      alert("Не удалось продать улучшение!");
+    }
+  };
+
   if (loading) return (
     <div className="flex flex-col h-full p-5">
       <Skeleton className="w-1/2 h-6 mx-auto mb-2" />
@@ -174,26 +184,36 @@ const Terminal = () => {
           <div className="grid grid-cols-1 gap-3">
             {shopItems?.map(item => (
               <div key={item.id} className="bg-white dark:bg-slate-800 rounded-2xl p-4 flex items-center gap-4 shadow-sm border border-slate-100 dark:border-slate-700/50">
-                <img src={`/${item.image_url}`} alt={item.name} className="w-16 h-16 rounded-xl object-cover" onError={(e) => { e.target.src = '/famcscoin.png'; }} />
+                <img src={item.image_url.startsWith('/') ? item.image_url : `/${item.image_url}`} alt={item.title} className="w-16 h-16 rounded-xl object-cover" onError={(e) => { e.target.src = '/famcscoin.png'; }} />
                 <div className="flex-1">
-                  <h4 className="font-bold text-slate-800 dark:text-slate-100">{item.name}</h4>
+                  <h4 className="font-bold text-slate-800 dark:text-slate-100">{item.title}</h4>
                   <p className="text-xs text-slate-500 mb-2 line-clamp-1">{item.description}</p>
                   <div className="flex gap-3 text-xs font-medium">
                     <span className="text-orange-500 flex items-center gap-1">
                       <img src="/famcscoin.png" className="w-3 h-3 rounded-full" /> {Math.floor(item.price).toLocaleString()}
                     </span>
-                    <span className="text-green-500">+{item.income_increase}/ч</span>
+                    <span className="text-green-500">+{item.profit_increase}/ч</span>
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <span className="text-xs text-slate-400 font-medium">Ур. {item.quantity}</span>
-                  <button 
-                    onClick={() => handleBuy(item.id)}
-                    disabled={user.balance < item.price}
-                    className="bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400 px-3 py-1.5 rounded-lg text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Купить
-                  </button>
+                  <div className="flex gap-1 mt-1">
+                    {item.quantity > 0 && (
+                      <button 
+                        onClick={() => handleSell(item.id)}
+                        className="bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400 px-3 py-1.5 rounded-lg text-sm font-bold active:scale-95 transition-transform"
+                      >
+                        -1
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => handleBuy(item.id)}
+                      disabled={user.balance < item.price}
+                      className="bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400 px-3 py-1.5 rounded-lg text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform"
+                    >
+                      Купить
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
