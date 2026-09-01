@@ -29,7 +29,7 @@ const Leaderboard = () => {
         <h2 className="text-2xl font-black text-slate-800 dark:text-white m-0">Топ игроков</h2>
       </div>
       <div className="flex flex-col gap-3">
-        {users.map((u, i) => (
+        {users?.map((u, i) => (
           <div key={i} className="flex items-center gap-4 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
             <div className="font-bold text-slate-400 w-6 text-center">#{i + 1}</div>
             <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-500 flex items-center justify-center font-bold">

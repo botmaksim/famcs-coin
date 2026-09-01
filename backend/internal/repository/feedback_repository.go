@@ -29,7 +29,7 @@ func (r *feedbackRepository) GetFeedbacks(ctx context.Context) ([]models.Feedbac
 	}
 	defer rows.Close()
 
-	var feedbacks []models.Feedback
+	feedbacks := []models.Feedback{}
 	for rows.Next() {
 		var f models.Feedback
 		if err := rows.Scan(&f.ID, &f.UserID, &f.Text, &f.Status, &f.CreatedAt); err == nil {

@@ -47,7 +47,7 @@ const WebLeaderboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {players.map((item, index) => (
+                {players?.map((item, index) => (
                   <tr key={index} className="border-b border-slate-100 dark:border-slate-700 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/80">
                     <td className={`p-5 text-center text-xl font-bold ${
                       index === 0 ? 'text-amber-500 text-2xl' : 

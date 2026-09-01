@@ -141,7 +141,7 @@ const Terminal = () => {
       <div className="flex justify-center items-center flex-col mb-12">
         <div className="tap-button relative cursor-pointer active:scale-95 transition-transform" onClick={handleClick}>
             <AnimatePresence>
-              {clicks.map((click) => (
+              {clicks?.map((click) => (
                 <motion.div
                   key={click.id}
                   initial={{ opacity: 1, y: click.y - 10, x: click.x - 20, scale: 0.8 }}
@@ -169,7 +169,7 @@ const Terminal = () => {
            <Skeleton className="w-full h-24 rounded-2xl mb-3" />
         ) : (
           <div className="grid grid-cols-1 gap-3">
-            {shopItems.map(item => (
+            {shopItems?.map(item => (
               <div key={item.id} className="bg-white dark:bg-slate-800 rounded-2xl p-4 flex items-center gap-4 shadow-sm border border-slate-100 dark:border-slate-700/50">
                 <img src={`/${item.image_url}`} alt={item.name} className="w-16 h-16 rounded-xl object-cover" onError={(e) => { e.target.src = '/famcscoin.png'; }} />
                 <div className="flex-1">

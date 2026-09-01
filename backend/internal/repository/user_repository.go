@@ -72,7 +72,7 @@ func (r *userRepository) GetLeaderboard(ctx context.Context, limit int) ([]model
 	}
 	defer rows.Close()
 
-	var users []models.User
+	users := []models.User{}
 	for rows.Next() {
 		var u models.User
 		if err := rows.Scan(&u.TgID, &u.Username, &u.CustomName, &u.AvatarURL, &u.Balance); err != nil {

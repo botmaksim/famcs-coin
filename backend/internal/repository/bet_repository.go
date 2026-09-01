@@ -41,7 +41,7 @@ func (r *betRepository) GetBets(ctx context.Context, userID int64) ([]models.Bet
 	}
 	defer rows.Close()
 
-	var bets []models.BetEvent
+	bets := []models.BetEvent{}
 	for rows.Next() {
 		var b models.BetEvent
 		var optionsRaw []byte

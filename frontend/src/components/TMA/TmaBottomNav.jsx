@@ -14,7 +14,7 @@ const TmaBottomNav = () => {
 
   return (
     <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] h-[70px] bg-[var(--card-bg)] backdrop-blur-md border-t border-[var(--glass-border)] flex justify-around items-center z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.2)]">
-      {navItems.map((item) => {
+      {navItems?.map((item) => {
         const isActive = location.pathname.startsWith(item.path);
         return (
           <div 

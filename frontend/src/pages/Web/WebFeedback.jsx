@@ -37,7 +37,7 @@ const WebFeedback = () => {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {feedbacks.map((f, i) => (
+          {feedbacks?.map((f, i) => (
             <div key={i} className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-transform hover:-translate-y-1">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 bg-orange-100 dark:bg-orange-500/20 text-orange-500 rounded-full flex items-center justify-center font-bold">

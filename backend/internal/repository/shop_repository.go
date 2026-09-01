@@ -39,7 +39,7 @@ func (r *shopRepository) GetItems(ctx context.Context, userID int64) ([]models.S
 	}
 	defer rows.Close()
 
-	var items []models.ShopItem
+	items := []models.ShopItem{}
 	for rows.Next() {
 		var item models.ShopItem
 		var basePrice float64

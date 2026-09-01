@@ -66,7 +66,7 @@ const Bets = () => {
         </div>
       ) : (
         <div className="flex flex-col gap-5">
-          {bets.map(bet => (
+          {bets?.map(bet => (
             <div key={bet.id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700">
               <h3 className="font-bold text-lg mb-2 text-slate-800 dark:text-slate-100 leading-tight">{bet.title}</h3>
               <p className="text-sm text-slate-500 mb-4">{bet.description}</p>
