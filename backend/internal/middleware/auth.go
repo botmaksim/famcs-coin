@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -28,6 +29,8 @@ const (
 
 // validateInitData validates the Telegram WebApp initData string
 func validateInitData(initData, botToken string) (bool, int64) {
+	log.Printf("[AUTH DEBUG] validateInitData called. Raw initData: %q, botToken len: %d", initData, len(botToken))
+
 	// Web Admin simple authentication using ADMIN_PANEL_PASSWORD
 	if strings.HasPrefix(initData, "web:") {
 		parts := strings.Split(initData, ":")
@@ -38,6 +41,7 @@ func validateInitData(initData, botToken string) (bool, int64) {
 			if expectedPassword != "" && password == expectedPassword {
 				tgID, err := strconv.ParseInt(tgIDStr, 10, 64)
 				if err == nil {
+					log.Printf("[AUTH DEBUG] Web Admin authenticated with tgID: %d", tgID)
 					return true, tgID
 				}
 			}
@@ -46,11 +50,13 @@ func validateInitData(initData, botToken string) (bool, int64) {
 
 	parsedArgs, err := url.ParseQuery(initData)
 	if err != nil {
+		log.Printf("[AUTH DEBUG] url.ParseQuery error: %v", err)
 		return false, 0
 	}
 
 	hash := parsedArgs.Get("hash")
 	if hash == "" {
+		log.Printf("[AUTH DEBUG] Hash is missing in initData! Keys present: %v", parsedArgs)
 		return false, 0
 	}
 	parsedArgs.Del("hash")
@@ -58,15 +64,17 @@ func validateInitData(initData, botToken string) (bool, int64) {
 	// Check auth_date to prevent replay attacks
 	authDateStr := parsedArgs.Get("auth_date")
 	if authDateStr == "" {
+		log.Printf("[AUTH DEBUG] auth_date is missing in initData")
 		return false, 0
 	}
 	authDateUnix, err := strconv.ParseInt(authDateStr, 10, 64)
 	if err != nil {
+		log.Printf("[AUTH DEBUG] auth_date parse error: %v", err)
 		return false, 0
 	}
 	authDate := time.Unix(authDateUnix, 0)
 	if time.Since(authDate) > 24*time.Hour {
-		fmt.Printf("Auth Failed! Session expired. authDate: %v, timeNow: %v\n", authDate, time.Now())
+		log.Printf("[AUTH DEBUG] Auth Failed! Session expired. authDate: %v, timeNow: %v", authDate, time.Now())
 		return false, 0 // Expired initData
 	}
 
@@ -93,14 +101,19 @@ func validateInitData(initData, botToken string) (bool, int64) {
 	expectedHash := hex.EncodeToString(dataMac.Sum(nil))
 
 	if expectedHash != hash {
-		fmt.Printf("Auth Failed! Expected Hash: %s, Got: %s\n", expectedHash, hash)
-		fmt.Printf("Check if TELEGRAM_BOT_TOKEN is correct and matches the bot.\n")
+		log.Printf("[AUTH DEBUG] Hash mismatch! Expected: %s, Got: %s", expectedHash, hash)
+		log.Printf("[AUTH DEBUG] DataCheckStr:\n%s", dataCheckStr)
+		log.Printf("[AUTH DEBUG] BotToken used (first 6 and last 4 chars): %s...%s (total len %d)", 
+			botToken[:min(6, len(botToken))], 
+			botToken[max(0, len(botToken)-4):], 
+			len(botToken))
 		return false, 0
 	}
 
 	// Extract user_id
 	userJSON := parsedArgs.Get("user")
 	if userJSON == "" {
+		log.Printf("[AUTH DEBUG] 'user' param is missing in initData")
 		return false, 0
 	}
 
@@ -108,9 +121,11 @@ func validateInitData(initData, botToken string) (bool, int64) {
 		ID int64 `json:"id"`
 	}
 	if err := json.Unmarshal([]byte(userJSON), &tgUser); err != nil {
+		log.Printf("[AUTH DEBUG] Failed to unmarshal user JSON: %v", err)
 		return false, 0
 	}
 
+	log.Printf("[AUTH DEBUG] Validation successful for UserID: %d", tgUser.ID)
 	return true, tgUser.ID
 }
 
@@ -122,7 +137,7 @@ func TMAAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 			
 			// Fallback to WebAuth logic
 			if authHeader == "" || !strings.HasPrefix(authHeader, "tma ") {
-				fmt.Printf("TMA Auth: Missing or invalid tma header, falling back to WebAuth. Header was: '%s'\n", authHeader)
+				log.Printf("[AUTH DEBUG] Missing or non-tma header: %q. Falling back to WebAuth", authHeader)
 				webAuthFunc := WebAuthMiddleware(botToken, userRepo)(next)
 				webAuthFunc.ServeHTTP(w, r)
 				return
@@ -131,6 +146,7 @@ func TMAAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 			initData := strings.TrimPrefix(authHeader, "tma ")
 			isValid, userID := validateInitData(initData, botToken)
 			if !isValid || userID == 0 {
+				log.Printf("[AUTH DEBUG] TMA auth validation returned false for header")
 				http.Error(w, "Unauthorized: Invalid TMA hash", http.StatusUnauthorized)
 				return
 			}
@@ -159,6 +175,7 @@ func WebAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+				log.Printf("[AUTH DEBUG] WebAuth rejected: authHeader is %q", authHeader)
 				http.Error(w, "Unauthorized: Missing or invalid Bearer header", http.StatusUnauthorized)
 				return
 			}
