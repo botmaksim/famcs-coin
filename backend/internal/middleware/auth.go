@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"famcscoin-backend/internal/models"
 	"famcscoin-backend/internal/repository"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -28,7 +29,7 @@ const (
 )
 
 // validateInitData validates the Telegram WebApp initData string
-func validateInitData(initData, botToken string) (bool, int64) {
+func validateInitData(initData, botToken string) (bool, int64, string, string) {
 	log.Printf("[AUTH DEBUG] validateInitData called. Raw initData: %q, botToken len: %d", initData, len(botToken))
 
 	// Web Admin simple authentication using ADMIN_PANEL_PASSWORD
@@ -42,7 +43,7 @@ func validateInitData(initData, botToken string) (bool, int64) {
 				tgID, err := strconv.ParseInt(tgIDStr, 10, 64)
 				if err == nil {
 					log.Printf("[AUTH DEBUG] Web Admin authenticated with tgID: %d", tgID)
-					return true, tgID
+					return true, tgID, "Admin", ""
 				}
 			}
 		}
@@ -51,13 +52,13 @@ func validateInitData(initData, botToken string) (bool, int64) {
 	parsedArgs, err := url.ParseQuery(initData)
 	if err != nil {
 		log.Printf("[AUTH DEBUG] url.ParseQuery error: %v", err)
-		return false, 0
+		return false, 0, "", ""
 	}
 
 	hash := parsedArgs.Get("hash")
 	if hash == "" {
 		log.Printf("[AUTH DEBUG] Hash is missing in initData! Keys present: %v", parsedArgs)
-		return false, 0
+		return false, 0, "", ""
 	}
 	parsedArgs.Del("hash")
 
@@ -65,17 +66,17 @@ func validateInitData(initData, botToken string) (bool, int64) {
 	authDateStr := parsedArgs.Get("auth_date")
 	if authDateStr == "" {
 		log.Printf("[AUTH DEBUG] auth_date is missing in initData")
-		return false, 0
+		return false, 0, "", ""
 	}
 	authDateUnix, err := strconv.ParseInt(authDateStr, 10, 64)
 	if err != nil {
 		log.Printf("[AUTH DEBUG] auth_date parse error: %v", err)
-		return false, 0
+		return false, 0, "", ""
 	}
 	authDate := time.Unix(authDateUnix, 0)
 	if time.Since(authDate) > 24*time.Hour {
 		log.Printf("[AUTH DEBUG] Auth Failed! Session expired. authDate: %v, timeNow: %v", authDate, time.Now())
-		return false, 0 // Expired initData
+		return false, 0, "", "" // Expired initData
 	}
 
 	var keys []string
@@ -107,26 +108,34 @@ func validateInitData(initData, botToken string) (bool, int64) {
 			botToken[:min(6, len(botToken))], 
 			botToken[max(0, len(botToken)-4):], 
 			len(botToken))
-		return false, 0
+		return false, 0, "", ""
 	}
 
-	// Extract user_id
+	// Extract user data
 	userJSON := parsedArgs.Get("user")
 	if userJSON == "" {
 		log.Printf("[AUTH DEBUG] 'user' param is missing in initData")
-		return false, 0
+		return false, 0, "", ""
 	}
 
 	var tgUser struct {
-		ID int64 `json:"id"`
+		ID        int64  `json:"id"`
+		Username  string `json:"username"`
+		FirstName string `json:"first_name"`
+		PhotoURL  string `json:"photo_url"`
 	}
 	if err := json.Unmarshal([]byte(userJSON), &tgUser); err != nil {
 		log.Printf("[AUTH DEBUG] Failed to unmarshal user JSON: %v", err)
-		return false, 0
+		return false, 0, "", ""
 	}
 
-	log.Printf("[AUTH DEBUG] Validation successful for UserID: %d", tgUser.ID)
-	return true, tgUser.ID
+	name := tgUser.Username
+	if name == "" {
+		name = tgUser.FirstName
+	}
+
+	log.Printf("[AUTH DEBUG] Validation successful for UserID: %d (%s)", tgUser.ID, name)
+	return true, tgUser.ID, name, tgUser.PhotoURL
 }
 
 // TMAAuthMiddleware checks 'tma' Authorization header, and falls back to JWT/Web token if present
@@ -144,7 +153,7 @@ func TMAAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 			}
 
 			initData := strings.TrimPrefix(authHeader, "tma ")
-			isValid, userID := validateInitData(initData, botToken)
+			isValid, userID, username, photoURL := validateInitData(initData, botToken)
 			if !isValid || userID == 0 {
 				log.Printf("[AUTH DEBUG] TMA auth validation returned false for header")
 				http.Error(w, "Unauthorized: Invalid TMA hash", http.StatusUnauthorized)
@@ -153,17 +162,30 @@ func TMAAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 
 			user, err := userRepo.GetUserByID(r.Context(), userID)
 			if err != nil || user == nil {
-				// Initial login, grant user role
-				ctx := context.WithValue(r.Context(), UserIDKey, userID)
-				ctx = context.WithValue(ctx, RoleKey, "user")
-				next.ServeHTTP(w, r.WithContext(ctx))
-				return
+				// Initial login, create user
+				var avatarPtr *string
+				if photoURL != "" {
+					avatarPtr = &photoURL
+				}
+				user = &models.User{
+					TgID:      userID,
+					Username:  username,
+					AvatarURL: avatarPtr,
+					Role:      "user",
+					Balance:   0,
+					Energy:    1000,
+					MaxEnergy: 1000,
+				}
+				if err := userRepo.CreateUser(r.Context(), user); err != nil {
+					log.Printf("[AUTH] Failed to auto-create user %d: %v", userID, err)
+				}
 			}
 
-
-
 			ctx := context.WithValue(r.Context(), UserIDKey, userID)
+			ctx = context.WithValue(ctx, "tg_id", userID)
+			ctx = context.WithValue(ctx, "user_id", userID)
 			ctx = context.WithValue(ctx, RoleKey, user.Role)
+			ctx = context.WithValue(ctx, "role", user.Role)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -201,7 +223,7 @@ func WebAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 
 			// Try Web Admin Password as fallback (web:tg_id:password)
 			if parsedUserID == 0 {
-				isValid, id := validateInitData(tokenStr, botToken)
+				isValid, id, _, _ := validateInitData(tokenStr, botToken)
 				if isValid && id != 0 {
 					parsedUserID = id
 				}
@@ -215,15 +237,19 @@ func WebAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 			user, err := userRepo.GetUserByID(r.Context(), parsedUserID)
 			if err != nil || user == nil {
 				ctx := context.WithValue(r.Context(), UserIDKey, parsedUserID)
+				ctx = context.WithValue(ctx, "tg_id", parsedUserID)
+				ctx = context.WithValue(ctx, "user_id", parsedUserID)
 				ctx = context.WithValue(ctx, RoleKey, "user")
+				ctx = context.WithValue(ctx, "role", "user")
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
 
-
-
 			ctx := context.WithValue(r.Context(), UserIDKey, parsedUserID)
+			ctx = context.WithValue(ctx, "tg_id", parsedUserID)
+			ctx = context.WithValue(ctx, "user_id", parsedUserID)
 			ctx = context.WithValue(ctx, RoleKey, user.Role)
+			ctx = context.WithValue(ctx, "role", user.Role)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
