@@ -127,7 +127,7 @@ const Terminal = () => {
       {/* Energy Bar area */}
       <div className="text-center mb-8">
         <div className="text-sm font-bold mb-1 flex justify-center items-center text-orange-500">
-          ⚡ {user.energy} / {user.maxEnergy || 1000}
+          {user.energy} / {user.maxEnergy || 1000}
         </div>
         <div className="w-full h-3 bg-slate-200 dark:bg-slate-800/50 rounded-full overflow-hidden shadow-inner border border-white/20 dark:border-slate-800">
           <div 

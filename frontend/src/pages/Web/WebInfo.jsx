@@ -25,7 +25,7 @@ const WebInfo = () => {
         {/* Section 2: Administration */}
         <section className="bg-[var(--card-bg)] p-6 rounded-xl mb-8 border border-[var(--glass-border)] shadow-sm backdrop-blur-md">
           <h2 className="mt-0 border-b border-blue-200/30 dark:border-blue-800/30 pb-2.5 text-blue-600 dark:text-blue-400 font-bold text-2xl">
-            <span className="inline-block mr-2 align-middle text-2xl">👑</span> Администрация факультета
+             Администрация факультета
           </h2>
           <p className="text-slate-600 dark:text-slate-300 my-4 text-lg">
             Проект управляется самими студентами. Существует несколько уровней доступа к панели управления:

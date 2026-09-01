@@ -102,7 +102,7 @@ const WebAdmin = () => {
     <div className="p-5 md:p-10 font-sans max-w-[800px] mx-auto bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen">
       <div className="flex justify-between items-center mb-8">
         <h2 className="m-0 flex items-center gap-2 text-2xl font-bold text-orange-500">
-          <span className="text-2xl">👑</span>
+          
           Админ Панель
         </h2>
         <button
@@ -114,7 +114,7 @@ const WebAdmin = () => {
       </div>
 
       <div className="bg-white dark:bg-slate-800 p-5 rounded-xl mb-5 shadow-sm border border-slate-100 dark:border-slate-700">
-        <h3 className="mt-0 text-xl font-bold mb-4">🎲 Управление ставками</h3>
+        <h3 className="mt-0 text-xl font-bold mb-4">Управление ставками</h3>
         <p className="text-sm text-slate-500 mb-4">Здесь можно завершить текущее событие и распределить выигрыши из пула.</p>
         <form onSubmit={handleResolveBet} className="flex flex-col gap-3">
           <input
@@ -144,7 +144,7 @@ const WebAdmin = () => {
       </div>
       
       <div className="bg-white dark:bg-slate-800 p-5 rounded-xl mb-5 shadow-sm border border-slate-100 dark:border-slate-700">
-        <h3 className="mt-0 text-xl font-bold mb-4">💡 Отзывы и Магазин</h3>
+        <h3 className="mt-0 text-xl font-bold mb-4">Отзывы и Магазин</h3>
         <p className="text-sm text-slate-500">Управление отзывами и редактирование ценников магазина пока доступно только через прямое подключение к базе данных.</p>
       </div>
 

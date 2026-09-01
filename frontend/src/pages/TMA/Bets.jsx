@@ -61,7 +61,7 @@ const Bets = () => {
 
       {bets.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-          <span className="text-5xl mb-4 opacity-50">🤷‍♂️</span>
+          
           <p className="font-medium">Сейчас нет активных событий</p>
         </div>
       ) : (

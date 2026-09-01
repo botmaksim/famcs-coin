@@ -3,10 +3,10 @@ export const i18n = {
     tasks: {
       title: "Задания",
       subtitle: "Выполняй простые квесты и получай монеты!",
-      inviteFriend: "🎁 Пригласи друга",
+      inviteFriend: "Пригласи друга",
       inviteReward: "Получи {reward} за каждого друга!",
       copyLink: "Скопировать ссылку",
-      copied: "Скопировано! ✅",
+      copied: "Скопировано!",
       completed: "Выполнено",
       claimReward: "Выполнить (+{reward})",
       emptyTasks: "Заданий пока нет",

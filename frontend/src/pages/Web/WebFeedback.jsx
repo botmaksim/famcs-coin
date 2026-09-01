@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../../api/client';
+import { Lightbulb } from 'lucide-react';
 
 const WebFeedback = () => {
   const [feedbacks, setFeedbacks] = useState([]);
@@ -22,7 +23,7 @@ const WebFeedback = () => {
   return (
     <div className="font-sans py-10 px-5 max-w-[800px] mx-auto w-full">
       <div className="flex items-center gap-3 mb-8">
-        <span className="text-4xl">💡</span>
+        <Lightbulb size={36} className="text-orange-500" />
         <h1 className="text-4xl m-0 font-black text-slate-800 dark:text-white">Идеи и Отзывы</h1>
       </div>
       <p className="text-slate-600 dark:text-slate-400 mb-10 text-lg">

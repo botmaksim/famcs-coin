@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LeaderboardService } from '../../api/services/LeaderboardService';
+import { Trophy } from 'lucide-react';
 
 const Leaderboard = () => {
   const [users, setUsers] = useState([]);
@@ -23,7 +24,10 @@ const Leaderboard = () => {
 
   return (
     <div className="p-5">
-      <h2 className="text-2xl font-black mb-5 text-slate-800 dark:text-white">🏆 Топ игроков</h2>
+      <div className="flex items-center gap-3 mb-5">
+        <Trophy size={28} className="text-orange-500" />
+        <h2 className="text-2xl font-black text-slate-800 dark:text-white m-0">Топ игроков</h2>
+      </div>
       <div className="flex flex-col gap-3">
         {users.map((u, i) => (
           <div key={i} className="flex items-center gap-4 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">

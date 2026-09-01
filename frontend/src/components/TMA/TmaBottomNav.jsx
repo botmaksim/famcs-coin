@@ -1,11 +1,12 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Rocket, Dices, Trophy, Lightbulb } from 'lucide-react';
 
 const navItems = [
-  { path: '/app/terminal', label: 'Фарм', icon: '🚀', className: 'nav-terminal' },
-  { path: '/app/bets', label: 'Ставки', icon: '🎰', className: 'nav-bets' },
-  { path: '/app/leaderboard', label: 'Топ', icon: '🏆', className: 'nav-leaderboard' },
-  { path: '/app/feedback', label: 'Идеи', icon: '💡', className: 'nav-feedback' },
+  { path: '/app/terminal', label: 'Фарм', icon: <Rocket size={24} />, className: 'nav-terminal' },
+  { path: '/app/bets', label: 'Ставки', icon: <Dices size={24} />, className: 'nav-bets' },
+  { path: '/app/leaderboard', label: 'Топ', icon: <Trophy size={24} />, className: 'nav-leaderboard' },
+  { path: '/app/feedback', label: 'Идеи', icon: <Lightbulb size={24} />, className: 'nav-feedback' },
 ];
 
 const TmaBottomNav = () => {
