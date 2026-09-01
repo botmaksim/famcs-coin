@@ -44,9 +44,7 @@ func processEconomyTick(pool *pgxpool.Pool) {
 	query := `
 		UPDATE users 
 		SET 
-			balance = balance + (passive_income / 60.0) 
-				* (CASE WHEN sleep_until IS NOT NULL AND sleep_until > CURRENT_TIMESTAMP THEN 1.5 ELSE 1.0 END)
-				* COALESCE((SELECT CASE WHEN boost_until IS NOT NULL AND boost_until > CURRENT_TIMESTAMP THEN 2.0 ELSE 1.0 END FROM squads WHERE squads.id = users.squad_id), 1.0),
+			balance = balance + (passive_income / 60.0),
 			energy = LEAST(energy + 10, max_energy)
 		WHERE passive_income > 0 OR energy < max_energy
 	`
