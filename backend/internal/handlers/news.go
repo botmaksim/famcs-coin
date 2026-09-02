@@ -44,22 +44,19 @@ func (h *NewsHandler) GetNews(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *NewsHandler) VoteNews(w http.ResponseWriter, r *http.Request) {
+	tgID, ok := r.Context().Value("tg_id").(int64)
+	if !ok || tgID <= 0 {
+		http.Error(w, "Голосование доступно только через Telegram Mini App", http.StatusUnauthorized)
+		return
+	}
+	voterID := fmt.Sprintf("tg:%d", tgID)
+
 	var req struct {
 		NewsID   int    `json:"news_id"`
 		VoteType string `json:"vote_type"`
-		VoterID  string `json:"voter_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid input", http.StatusBadRequest)
-		return
-	}
-
-	voterID := h.getVoterID(r)
-	if voterID == "" {
-		voterID = strings.TrimSpace(req.VoterID)
-	}
-	if voterID == "" {
-		http.Error(w, "Voter ID required", http.StatusBadRequest)
 		return
 	}
 

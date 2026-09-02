@@ -13,7 +13,6 @@ const WebNews = () => {
 
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [votingId, setVotingId] = useState(null);
 
   // Header Rich Text State
   const [headerContent, setHeaderContent] = useState({
@@ -195,70 +194,6 @@ const WebNews = () => {
       setNews(prev => prev.filter(item => item.id !== id));
     } catch (err) {
       alert('Ошибка при удалении');
-    }
-  };
-
-  const handleVote = async (newsItem, voteType) => {
-    if (newsItem.status && newsItem.status !== 'open') {
-      alert('Голосование по этому предложению уже завершено');
-      return;
-    }
-
-    const newsId = newsItem.id;
-    // Optimistic UI update
-    setNews(prev => prev.map(item => {
-      if (item.id !== newsId) return item;
-
-      let likes = item.likes_count;
-      let dislikes = item.dislikes_count;
-      let userVote = item.user_vote;
-
-      if (userVote === voteType) {
-        if (voteType === 'like') likes = Math.max(0, likes - 1);
-        else dislikes = Math.max(0, dislikes - 1);
-        userVote = null;
-      } else if (userVote) {
-        if (voteType === 'like') {
-          likes += 1;
-          dislikes = Math.max(0, dislikes - 1);
-        } else {
-          dislikes += 1;
-          likes = Math.max(0, likes - 1);
-        }
-        userVote = voteType;
-      } else {
-        if (voteType === 'like') likes += 1;
-        else dislikes += 1;
-        userVote = voteType;
-      }
-
-      return {
-        ...item,
-        likes_count: likes,
-        dislikes_count: dislikes,
-        user_vote: userVote
-      };
-    }));
-
-    setVotingId(newsId);
-    try {
-      const res = await NewsService.voteNews(newsId, voteType);
-      if (res.data && res.data.status === 'ok') {
-        setNews(prev => prev.map(item => {
-          if (item.id !== newsId) return item;
-          return {
-            ...item,
-            likes_count: res.data.likes_count,
-            dislikes_count: res.data.dislikes_count,
-            user_vote: res.data.user_vote
-          };
-        }));
-      }
-    } catch (err) {
-      alert(err.response?.data || 'Ошибка при голосовании');
-      fetchNewsAndHeader();
-    } finally {
-      setVotingId(null);
     }
   };
 
@@ -452,55 +387,29 @@ const WebNews = () => {
 
                 {/* Voting & Reaction Bar */}
                 <div className="pt-4 border-t border-slate-100 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  {/* Buttons */}
-                  <div className="flex items-center gap-3">
-                    {/* Like Button */}
-                    <button
-                      onClick={() => handleVote(item, 'like')}
-                      disabled={votingId === item.id || isClosed}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs transition-all border ${
-                        item.user_vote === 'like'
-                          ? 'bg-emerald-500 text-white border-emerald-600 shadow-[0_2px_10px_rgba(16,185,129,0.3)]'
-                          : isClosed
-                          ? 'bg-slate-100 dark:bg-slate-900/40 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed opacity-80'
-                          : 'bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-600 hover:border-emerald-300'
-                      }`}
-                    >
-                      <ThumbsUp size={15} className={item.user_vote === 'like' ? 'fill-white' : ''} />
+                  {/* Read-only Counts */}
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
+                      <ThumbsUp size={14} className="text-emerald-500" />
                       <span>Нравится</span>
-                      <span className={`px-2 py-0.5 rounded-md text-[11px] ${
-                        item.user_vote === 'like'
-                          ? 'bg-white/20 text-white'
-                          : 'bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                      }`}>
+                      <span className="bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded-md text-[11px]">
                         {item.likes_count}
                       </span>
-                    </button>
+                    </div>
 
-                    {/* Dislike Button */}
-                    <button
-                      onClick={() => handleVote(item, 'dislike')}
-                      disabled={votingId === item.id || isClosed}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs transition-all border ${
-                        item.user_vote === 'dislike'
-                          ? 'bg-rose-500 text-white border-rose-600 shadow-[0_2px_10px_rgba(244,63,94,0.3)]'
-                          : isClosed
-                          ? 'bg-slate-100 dark:bg-slate-900/40 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed opacity-80'
-                          : 'bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 hover:border-rose-300'
-                      }`}
-                    >
-                      <ThumbsDown size={15} className={item.user_vote === 'dislike' ? 'fill-white' : ''} />
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-slate-50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                      <ThumbsDown size={14} className="text-slate-400" />
                       <span>Не нравится</span>
-                      <span className={`px-2 py-0.5 rounded-md text-[11px] ${
-                        item.user_vote === 'dislike'
-                          ? 'bg-white/20 text-white'
-                          : 'bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                      }`}>
+                      <span className="bg-slate-200/70 dark:bg-slate-800 px-1.5 py-0.5 rounded-md text-[11px]">
                         {item.dislikes_count}
                       </span>
-                    </button>
+                    </div>
 
-                    {isClosed && (
+                    {!isClosed ? (
+                      <span className="text-[11px] text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 border border-orange-200/50 dark:border-orange-800/40 px-2.5 py-1 rounded-xl font-medium inline-flex items-center gap-1">
+                        📱 Голосование в Telegram Mini App
+                      </span>
+                    ) : (
                       <span className="text-xs text-slate-400 flex items-center gap-1 font-medium ml-1">
                         <Lock size={12} />
                         Опрос закрыт

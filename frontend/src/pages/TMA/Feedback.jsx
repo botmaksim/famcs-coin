@@ -16,11 +16,24 @@ const Feedback = () => {
   const [loadingNews, setLoadingNews] = useState(true);
   const [votingId, setVotingId] = useState(null);
 
+  // Dynamic Header & Rich Text Announcement State
+  const [headerContent, setHeaderContent] = useState({
+    title: 'Новости и Идеи Развития',
+    subtitle: 'Узнавайте первыми о новых фичах факультетской игры и голосуйте за идеи, которые хотите увидеть в следующем релизе!',
+    banner: ''
+  });
+
   const fetchNews = async () => {
     try {
       setLoadingNews(true);
-      const res = await NewsService.getNews();
-      setNews(res.data || []);
+      const [newsRes, headerRes] = await Promise.all([
+        NewsService.getNews(),
+        NewsService.getNewsHeader().catch(() => null)
+      ]);
+      setNews(newsRes.data || []);
+      if (headerRes?.data) {
+        setHeaderContent(headerRes.data);
+      }
     } catch (err) {
       console.error("Failed to load news/ideas", err);
     } finally {
@@ -113,13 +126,33 @@ const Feedback = () => {
 
   return (
     <div className="flex flex-col p-5 pb-28">
-      {/* Header */}
-      <h2 className="text-3xl font-black mb-1 text-slate-800 dark:text-white drop-shadow-sm flex items-center gap-2">
-        <img src="/icon_feedback.png" alt="Идеи" className="w-8 h-8" /> Идеи и предложения
+      {/* Header Badge */}
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 dark:bg-orange-950/50 text-orange-500 text-xs font-bold mb-2.5 border border-orange-200/50 dark:border-orange-800/40 w-fit">
+        <Sparkles size={13} />
+        <span>Планы и обновления</span>
+      </div>
+
+      {/* Dynamic Header Title & Subtitle */}
+      <h2 className="text-2xl font-black mb-1.5 text-slate-800 dark:text-white drop-shadow-sm leading-tight flex items-center gap-2">
+        <img src="/icon_feedback.png" alt="Идеи" className="w-7 h-7 shrink-0" />
+        <span>{headerContent.title || 'Новости и Идеи Развития'}</span>
       </h2>
-      <p className="text-slate-500 dark:text-slate-400 mb-6 text-xs font-medium">
-        Предложите свою идею для игры или расскажите о баге разработчикам!
+      <p className="text-slate-500 dark:text-slate-400 mb-4 text-xs font-medium leading-relaxed">
+        {headerContent.subtitle || 'Узнавайте первыми о новых фичах факультетской игры и голосуйте за идеи!'}
       </p>
+
+      {/* Rich Text Announcement Banner */}
+      {headerContent.banner && (
+        <div className="p-4 bg-gradient-to-r from-orange-500/15 via-amber-500/10 to-orange-500/15 border border-orange-500/30 rounded-2xl mb-6 shadow-xs">
+          <div className="text-[11px] font-black text-orange-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+            <Sparkles size={13} />
+            <span>Важное объявление</span>
+          </div>
+          <div className="text-xs text-slate-700 dark:text-slate-200 whitespace-pre-line leading-relaxed font-medium">
+            {headerContent.banner}
+          </div>
+        </div>
+      )}
 
       {/* Feedback Submission Card */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700/80 mb-8">

@@ -106,22 +106,18 @@ describe('WebNews Component', () => {
     expect(screen.getByText(/Релиз на следующей неделе/i)).toBeInTheDocument();
   });
 
-  it('allows voting on open polls', async () => {
+  it('renders read-only reaction counts and Telegram Mini App prompt', async () => {
     render(<WebNews />);
 
     await waitFor(() => {
       expect(screen.getByText('Клановые битвы')).toBeInTheDocument();
     });
 
-    const likeButtons = screen.getAllByRole('button', { name: /Нравится/i });
-    fireEvent.click(likeButtons[0]);
-
-    await waitFor(() => {
-      expect(NewsService.voteNews).toHaveBeenCalledWith(1, 'like');
-    });
+    expect(screen.getAllByText(/Голосование в Telegram Mini App/i).length).toBeGreaterThan(0);
+    expect(screen.getByText('10')).toBeInTheDocument();
   });
 
-  it('disables voting on closed polls', async () => {
+  it('shows closed status for closed polls', async () => {
     render(<WebNews />);
 
     await waitFor(() => {
