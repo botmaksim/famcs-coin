@@ -16,7 +16,7 @@ export const useUserStore = create(
     }),
     {
       name: 'user-storage',
-      partialize: (state) => ({ soundEnabled: state.soundEnabled }), // Only persist soundEnabled
+      partialize: (state) => ({ soundEnabled: state.soundEnabled, localUser: state.localUser }),
     }
   )
 );

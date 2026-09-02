@@ -1,52 +1,60 @@
-import { createContext, useContext, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { UserService } from '../api/services/UserService';
 import { useUserStore } from '../store/useUserStore';
 
-export const UserContext = createContext();
+export const UserContext = createContext(null);
 
-export const useUser = () => {
-  const queryClient = useQueryClient();
-  const { soundEnabled, toggleSound, localUser, updateLocalUser, setLocalUser } = useUserStore();
+export const UserProvider = ({ children }) => {
+  const { soundEnabled, toggleSound, localUser, setLocalUser, updateLocalUser } = useUserStore();
+  const [loading, setLoading] = useState(!localUser);
+  const [error, setError] = useState(null);
 
-  const { data: userQuery, isLoading: loading, error, refetch: fetchProfile } = useQuery({
-    queryKey: ['userProfile'],
-    queryFn: async () => {
+  const fetchProfile = useCallback(async () => {
+    try {
       const response = await UserService.getProfile();
+      if (response.data) {
+        setLocalUser(response.data);
+      }
       return response.data;
-    },
-    staleTime: 2000,
-    refetchOnWindowFocus: true,
-  });
+    } catch (err) {
+      console.error('Failed to fetch profile', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [setLocalUser]);
 
   useEffect(() => {
-    if (userQuery) {
-      setLocalUser(userQuery);
-    }
-  }, [userQuery, setLocalUser]);
+    fetchProfile();
+  }, [fetchProfile]);
 
-  // Merge local optimistic updates with server data
-  const user = localUser || userQuery || {
+  const user = localUser || {
     balance: 0,
     energy: 1000,
+    max_energy: 1000,
     maxEnergy: 1000,
+    passive_income: 0,
     passiveIncome: 0,
     role: 'user',
   };
 
-  return {
+  const value = {
     user,
     loading,
-    error: error ? error.message : null,
+    error,
     fetchProfile,
     updateLocalUser,
     soundEnabled,
-    toggleSound
+    toggleSound,
   };
+
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 };
 
-// Keep UserProvider to avoid breaking changes in main App tree, but it doesn't need to hold state anymore
-export const UserProvider = ({ children }) => {
-  // Can provide empty object or dummy since useUser no longer consumes the context directly
-  return <UserContext.Provider value={{}}>{children}</UserContext.Provider>;
+export const useUser = () => {
+  const ctx = useContext(UserContext);
+  if (!ctx) {
+    throw new Error('useUser must be used within UserProvider');
+  }
+  return ctx;
 };
