@@ -29,7 +29,7 @@ const (
 )
 
 // validateInitData validates the Telegram WebApp initData string
-func validateInitData(initData, botToken string) (bool, int64, string, string) {
+func validateInitData(initData, botToken string) (bool, int64, string, string, string) {
 	log.Printf("[AUTH DEBUG] validateInitData called. Raw initData: %q, botToken len: %d", initData, len(botToken))
 
 	// Web Admin simple authentication using ADMIN_PANEL_PASSWORD
@@ -43,7 +43,7 @@ func validateInitData(initData, botToken string) (bool, int64, string, string) {
 				tgID, err := strconv.ParseInt(tgIDStr, 10, 64)
 				if err == nil {
 					log.Printf("[AUTH DEBUG] Web Admin authenticated with tgID: %d", tgID)
-					return true, tgID, "Admin", ""
+					return true, tgID, "admin", "Admin", ""
 				}
 			}
 		}
@@ -52,13 +52,13 @@ func validateInitData(initData, botToken string) (bool, int64, string, string) {
 	parsedArgs, err := url.ParseQuery(initData)
 	if err != nil {
 		log.Printf("[AUTH DEBUG] url.ParseQuery error: %v", err)
-		return false, 0, "", ""
+		return false, 0, "", "", ""
 	}
 
 	hash := parsedArgs.Get("hash")
 	if hash == "" {
 		log.Printf("[AUTH DEBUG] Hash is missing in initData! Keys present: %v", parsedArgs)
-		return false, 0, "", ""
+		return false, 0, "", "", ""
 	}
 	parsedArgs.Del("hash")
 
@@ -66,17 +66,17 @@ func validateInitData(initData, botToken string) (bool, int64, string, string) {
 	authDateStr := parsedArgs.Get("auth_date")
 	if authDateStr == "" {
 		log.Printf("[AUTH DEBUG] auth_date is missing in initData")
-		return false, 0, "", ""
+		return false, 0, "", "", ""
 	}
 	authDateUnix, err := strconv.ParseInt(authDateStr, 10, 64)
 	if err != nil {
 		log.Printf("[AUTH DEBUG] auth_date parse error: %v", err)
-		return false, 0, "", ""
+		return false, 0, "", "", ""
 	}
 	authDate := time.Unix(authDateUnix, 0)
 	if time.Since(authDate) > 24*time.Hour {
 		log.Printf("[AUTH DEBUG] Auth Failed! Session expired. authDate: %v, timeNow: %v", authDate, time.Now())
-		return false, 0, "", "" // Expired initData
+		return false, 0, "", "", "" // Expired initData
 	}
 
 	var keys []string
@@ -108,14 +108,14 @@ func validateInitData(initData, botToken string) (bool, int64, string, string) {
 			botToken[:min(6, len(botToken))], 
 			botToken[max(0, len(botToken)-4):], 
 			len(botToken))
-		return false, 0, "", ""
+		return false, 0, "", "", ""
 	}
 
 	// Extract user data
 	userJSON := parsedArgs.Get("user")
 	if userJSON == "" {
 		log.Printf("[AUTH DEBUG] 'user' param is missing in initData")
-		return false, 0, "", ""
+		return false, 0, "", "", ""
 	}
 
 	var tgUser struct {
@@ -127,16 +127,24 @@ func validateInitData(initData, botToken string) (bool, int64, string, string) {
 	}
 	if err := json.Unmarshal([]byte(userJSON), &tgUser); err != nil {
 		log.Printf("[AUTH DEBUG] Failed to unmarshal user JSON: %v", err)
-		return false, 0, "", ""
+		return false, 0, "", "", ""
 	}
 
-	name := strings.TrimSpace(tgUser.FirstName + " " + tgUser.LastName)
-	if name == "" {
-		name = tgUser.Username
+	firstName := strings.TrimSpace(tgUser.FirstName + " " + tgUser.LastName)
+	if firstName == "" {
+		firstName = tgUser.Username
+	}
+	if firstName == "" {
+		firstName = fmt.Sprintf("ID:%d", tgUser.ID)
 	}
 
-	log.Printf("[AUTH DEBUG] Validation successful for UserID: %d (%s)", tgUser.ID, name)
-	return true, tgUser.ID, name, tgUser.PhotoURL
+	username := tgUser.Username
+	if username == "" {
+		username = firstName
+	}
+
+	log.Printf("[AUTH DEBUG] Validation successful for UserID: %d (username: %s, name: %s)", tgUser.ID, username, firstName)
+	return true, tgUser.ID, username, firstName, tgUser.PhotoURL
 }
 
 // TMAAuthMiddleware checks 'tma' Authorization header, and falls back to JWT/Web token if present
@@ -154,7 +162,7 @@ func TMAAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 			}
 
 			initData := strings.TrimPrefix(authHeader, "tma ")
-			isValid, userID, username, photoURL := validateInitData(initData, botToken)
+			isValid, userID, username, firstName, photoURL := validateInitData(initData, botToken)
 			if !isValid || userID == 0 {
 				log.Printf("[AUTH DEBUG] TMA auth validation returned false for header")
 				http.Error(w, "Unauthorized: Invalid TMA hash", http.StatusUnauthorized)
@@ -172,6 +180,7 @@ func TMAAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 				user = &models.User{
 					TgID:      userID,
 					Username:  username,
+					FirstName: firstName,
 					AvatarURL: avatarPtr,
 					Role:      "user",
 					Balance:   0,
@@ -182,21 +191,26 @@ func TMAAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 					log.Printf("[AUTH] Failed to auto-create user %d: %v", userID, err)
 				}
 			} else {
-				// Check if we need to update avatar or username
-				needsUpdate := user.Username != username
-				if !needsUpdate {
-					oldAvatar := ""
-					if user.AvatarURL != nil {
-						oldAvatar = *user.AvatarURL
-					}
-					if oldAvatar != photoURL {
-						needsUpdate = true
-					}
+				// Check if we need to update avatar, username, or firstName
+				needsUpdate := false
+				if user.Username != username && username != "" {
+					user.Username = username
+					needsUpdate = true
+				}
+				if user.FirstName != firstName && firstName != "" {
+					user.FirstName = firstName
+					needsUpdate = true
+				}
+				oldAvatar := ""
+				if user.AvatarURL != nil {
+					oldAvatar = *user.AvatarURL
+				}
+				if oldAvatar != photoURL && photoURL != "" {
+					user.AvatarURL = avatarPtr
+					needsUpdate = true
 				}
 				
 				if needsUpdate {
-					user.Username = username
-					user.AvatarURL = avatarPtr
 					if err := userRepo.CreateUser(r.Context(), user); err != nil {
 						log.Printf("[AUTH] Failed to update user %d profile: %v", userID, err)
 					}
@@ -245,7 +259,7 @@ func WebAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 
 			// Try Web Admin Password as fallback (web:tg_id:password)
 			if parsedUserID == 0 {
-				isValid, id, _, _ := validateInitData(tokenStr, botToken)
+				isValid, id, _, _, _ := validateInitData(tokenStr, botToken)
 				if isValid && id != 0 {
 					parsedUserID = id
 				}
@@ -284,7 +298,7 @@ func OptionalAuthMiddleware(botToken string) func(http.Handler) http.Handler {
 			authHeader := r.Header.Get("Authorization")
 			if strings.HasPrefix(authHeader, "tma ") {
 				initData := strings.TrimPrefix(authHeader, "tma ")
-				isValid, userID, _, _ := validateInitData(initData, botToken)
+				isValid, userID, _, _, _ := validateInitData(initData, botToken)
 				if isValid && userID > 0 {
 					ctx := context.WithValue(r.Context(), "tg_id", userID)
 					r = r.WithContext(ctx)

@@ -5,21 +5,22 @@ import (
 )
 
 type User struct {
-	TgID            int64      `json:"tg_id"`
-	Username        string     `json:"username"`
-	CustomName      *string    `json:"custom_name"`
-	AvatarURL       *string    `json:"avatar_url"`
-	Role            string     `json:"role"`
-	Balance         float64    `json:"balance"`
-	Energy          int        `json:"energy"`
-	MaxEnergy       int        `json:"max_energy"`
-	PassiveIncome   float64    `json:"passive_income"`
-	IsHidden        bool       `json:"is_hidden"`
-	LastEnergyRefill time.Time `json:"last_energy_refill"`
-	LastActiveAt    *time.Time `json:"last_active_at,omitempty"`
-	CreatedAt       time.Time  `json:"created_at"`
-	BetsWon         int        `json:"bets_won,omitempty"`
-	BetsProfit      float64    `json:"bets_profit,omitempty"`
+	TgID             int64      `json:"tg_id"`
+	Username         string     `json:"username"`
+	FirstName        string     `json:"first_name"`
+	CustomName       *string    `json:"custom_name"`
+	AvatarURL        *string    `json:"avatar_url"`
+	Role             string     `json:"role"`
+	Balance          float64    `json:"balance"`
+	Energy           int        `json:"energy"`
+	MaxEnergy        int        `json:"max_energy"`
+	PassiveIncome    float64    `json:"passive_income"`
+	IsHidden         bool       `json:"is_hidden"`
+	LastEnergyRefill time.Time  `json:"last_energy_refill"`
+	LastActiveAt     *time.Time `json:"last_active_at,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	BetsWon          int        `json:"bets_won,omitempty"`
+	BetsProfit       float64    `json:"bets_profit,omitempty"`
 }
 
 type Upgrade struct {
@@ -85,12 +86,13 @@ type UserBet struct {
 }
 
 type Feedback struct {
-	ID          int       `json:"id"`
-	UserID      int64     `json:"user_id"`
-	Username    string    `json:"username"`
-	Text        string    `json:"text"`
-	Status      string    `json:"status"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID        int       `json:"id"`
+	UserID    int64     `json:"user_id"`
+	Username  string    `json:"username"`
+	FirstName string    `json:"first_name"`
+	Text      string    `json:"text"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type NewsItem struct {

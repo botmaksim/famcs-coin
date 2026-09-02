@@ -781,8 +781,23 @@ const TmaAdmin = () => {
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <div className="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-1.5">
-                        <span>@{item.username || 'Аноним'}</span>
+                      <div className="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-1.5 flex-wrap">
+                        {item.username ? (
+                          <a 
+                            href={`https://t.me/${item.username.replace(/^@/, '')}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-500 dark:text-blue-400 hover:underline inline-flex items-center"
+                            title="Написать пользователю в Telegram"
+                          >
+                            <span>@{item.username.replace(/^@/, '')}</span>
+                          </a>
+                        ) : (
+                          <span>@{item.user_id}</span>
+                        )}
+                        {item.first_name && item.first_name !== item.username && (
+                          <span className="text-xs text-slate-400 font-medium">({item.first_name})</span>
+                        )}
                         <span className="text-[10px] text-slate-400 font-normal">#{item.user_id}</span>
                       </div>
                       <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">

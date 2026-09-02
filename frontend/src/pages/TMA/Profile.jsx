@@ -43,8 +43,13 @@ const Profile = () => {
           )}
         </div>
         <div className="text-xl font-bold text-slate-800 dark:text-white mt-1">
-          @{user?.username}
+          {user?.custom_name || user?.first_name || user?.username || 'Студент'}
         </div>
+        {user?.username && (
+          <div className="text-sm font-medium text-slate-400 -mt-1">
+            @{user.username.replace(/^@/, '')}
+          </div>
+        )}
         <p className="text-xs text-slate-400 -mt-2">Аватарка подтягивается из Telegram</p>
         <div className="text-sm font-medium px-3 py-1 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400 mt-2">
           Роль: {user?.role}

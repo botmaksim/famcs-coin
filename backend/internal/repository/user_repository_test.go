@@ -26,10 +26,10 @@ func TestUserRepository_GetUserByID(t *testing.T) {
 		now := time.Now()
 		avatarURL := "url"
 		
-		rows := mock.NewRows([]string{"tg_id", "username", "custom_name", "avatar_url", "role", "balance", "energy", "max_energy", "passive_income", "is_hidden", "last_active_at", "created_at"}).
-			AddRow(id, "testuser", nil, &avatarURL, "user", 100.0, 50, 100, 1.5, false, &now, now)
+		rows := mock.NewRows([]string{"tg_id", "username", "first_name", "custom_name", "avatar_url", "role", "balance", "energy", "max_energy", "passive_income", "is_hidden", "last_active_at", "created_at"}).
+			AddRow(id, "testuser", "Test", nil, &avatarURL, "user", 100.0, 50, 100, 1.5, false, &now, now)
 
-		mock.ExpectQuery("^SELECT tg_id, username, custom_name, avatar_url, role, balance, energy, max_energy, passive_income, is_hidden, last_active_at, created_at FROM users WHERE tg_id = \\$1$").
+		mock.ExpectQuery("^SELECT tg_id, username, COALESCE\\(first_name, ''\\), custom_name, avatar_url, role, balance, energy, max_energy, passive_income, is_hidden, last_active_at, created_at FROM users WHERE tg_id = \\$1$").
 			WithArgs(id).
 			WillReturnRows(rows)
 
@@ -42,7 +42,7 @@ func TestUserRepository_GetUserByID(t *testing.T) {
 
 	t.Run("user not found", func(t *testing.T) {
 		id := int64(999)
-		mock.ExpectQuery("^SELECT tg_id, username, custom_name, avatar_url, role, balance, energy, max_energy, passive_income, is_hidden, last_active_at, created_at FROM users WHERE tg_id = \\$1$").
+		mock.ExpectQuery("^SELECT tg_id, username, COALESCE\\(first_name, ''\\), custom_name, avatar_url, role, balance, energy, max_energy, passive_income, is_hidden, last_active_at, created_at FROM users WHERE tg_id = \\$1$").
 			WithArgs(id).
 			WillReturnError(pgx.ErrNoRows)
 
@@ -62,6 +62,7 @@ func TestUserRepository_CreateUser(t *testing.T) {
 	user := &models.User{
 		TgID:      123,
 		Username:  "newuser",
+		FirstName: "New User",
 		AvatarURL: &avatarURL,
 		Role:      "user",
 		Balance:   0,
@@ -70,7 +71,7 @@ func TestUserRepository_CreateUser(t *testing.T) {
 	}
 
 	mock.ExpectExec("^INSERT INTO users").
-		WithArgs(user.TgID, user.Username, user.AvatarURL, user.Role, user.Balance, user.Energy, user.MaxEnergy).
+		WithArgs(user.TgID, user.Username, user.FirstName, user.AvatarURL, user.Role, user.Balance, user.Energy, user.MaxEnergy).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
 	err = repo.CreateUser(context.Background(), user)

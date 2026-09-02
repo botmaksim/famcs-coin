@@ -15,8 +15,8 @@ func TestUserRepository_GetLeaderboard(t *testing.T) {
 
 	repo := NewUserRepository(mock)
 
-	rows := mock.NewRows([]string{"tg_id", "username", "custom_name", "avatar_url", "balance", "passive_income", "bets_won", "bets_profit"}).
-		AddRow(int64(1), "user1", nil, nil, 100.0, 50.0, 5, 20.0)
+	rows := mock.NewRows([]string{"tg_id", "username", "first_name", "custom_name", "avatar_url", "balance", "passive_income", "bets_won", "bets_profit"}).
+		AddRow(int64(1), "user1", "User One", nil, nil, 100.0, 50.0, 5, 20.0)
 
 	mock.ExpectQuery("SELECT u.tg_id.*").
 		WithArgs(10).

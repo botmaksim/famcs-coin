@@ -30,11 +30,11 @@ func NewUserRepository(db db.PgxPoolIface) UserRepository {
 }
 
 func (r *userRepository) GetUserByID(ctx context.Context, id int64) (*models.User, error) {
-	query := `SELECT tg_id, username, custom_name, avatar_url, role, balance, energy, max_energy, passive_income, is_hidden, last_active_at, created_at FROM users WHERE tg_id = $1`
+	query := `SELECT tg_id, username, COALESCE(first_name, ''), custom_name, avatar_url, role, balance, energy, max_energy, passive_income, is_hidden, last_active_at, created_at FROM users WHERE tg_id = $1`
 	row := r.db.QueryRow(ctx, query, id)
 
 	var u models.User
-	err := row.Scan(&u.TgID, &u.Username, &u.CustomName, &u.AvatarURL, &u.Role, &u.Balance, &u.Energy, &u.MaxEnergy, &u.PassiveIncome, &u.IsHidden, &u.LastActiveAt, &u.CreatedAt)
+	err := row.Scan(&u.TgID, &u.Username, &u.FirstName, &u.CustomName, &u.AvatarURL, &u.Role, &u.Balance, &u.Energy, &u.MaxEnergy, &u.PassiveIncome, &u.IsHidden, &u.LastActiveAt, &u.CreatedAt)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
@@ -78,11 +78,11 @@ func (r *userRepository) GetUserByID(ctx context.Context, id int64) (*models.Use
 }
 
 func (r *userRepository) CreateUser(ctx context.Context, user *models.User) error {
-	query := `INSERT INTO users (tg_id, username, avatar_url, role, balance, energy, max_energy) 
-			  VALUES ($1, $2, $3, $4, $5, $6, $7)
+	query := `INSERT INTO users (tg_id, username, first_name, avatar_url, role, balance, energy, max_energy) 
+			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 			  ON CONFLICT (tg_id) DO UPDATE SET 
-			  username = EXCLUDED.username, avatar_url = EXCLUDED.avatar_url, last_active_at = CURRENT_TIMESTAMP`
-	_, err := r.db.Exec(ctx, query, user.TgID, user.Username, user.AvatarURL, user.Role, user.Balance, user.Energy, user.MaxEnergy)
+			  username = EXCLUDED.username, first_name = EXCLUDED.first_name, avatar_url = EXCLUDED.avatar_url, last_active_at = CURRENT_TIMESTAMP`
+	_, err := r.db.Exec(ctx, query, user.TgID, user.Username, user.FirstName, user.AvatarURL, user.Role, user.Balance, user.Energy, user.MaxEnergy)
 	return err
 }
 
@@ -115,13 +115,13 @@ func (r *userRepository) GetLeaderboard(ctx context.Context, limit int, sortBy s
 
 	query := fmt.Sprintf(`
 		SELECT 
-			u.tg_id, u.username, u.custom_name, u.avatar_url, u.balance, u.passive_income,
+			u.tg_id, u.username, COALESCE(u.first_name, ''), u.custom_name, u.avatar_url, u.balance, u.passive_income,
 			COUNT(CASE WHEN ub.payout > ub.amount THEN 1 END) as bets_won,
 			COALESCE(SUM(ub.payout - ub.amount), 0) as bets_profit
 		FROM users u
 		LEFT JOIN user_bets ub ON u.tg_id = ub.user_id %s
 		WHERE u.is_hidden = FALSE
-		GROUP BY u.tg_id, u.username, u.custom_name, u.avatar_url, u.balance, u.passive_income
+		GROUP BY u.tg_id, u.username, u.first_name, u.custom_name, u.avatar_url, u.balance, u.passive_income
 		ORDER BY %s 
 		LIMIT $1
 	`, periodJoin, orderClause)
@@ -135,7 +135,7 @@ func (r *userRepository) GetLeaderboard(ctx context.Context, limit int, sortBy s
 	users := []models.User{}
 	for rows.Next() {
 		var u models.User
-		if err := rows.Scan(&u.TgID, &u.Username, &u.CustomName, &u.AvatarURL, &u.Balance, &u.PassiveIncome, &u.BetsWon, &u.BetsProfit); err != nil {
+		if err := rows.Scan(&u.TgID, &u.Username, &u.FirstName, &u.CustomName, &u.AvatarURL, &u.Balance, &u.PassiveIncome, &u.BetsWon, &u.BetsProfit); err != nil {
 			log.Println("Error scanning leaderboard row:", err)
 			continue
 		}
