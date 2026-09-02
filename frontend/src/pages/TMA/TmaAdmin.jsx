@@ -6,7 +6,7 @@ import { BetsService } from '../../api/services/BetsService';
 import { ShopService } from '../../api/services/ShopService';
 import { FeedbackService } from '../../api/services/FeedbackService';
 import { NewsService } from '../../api/services/NewsService';
-import { ArrowLeft, Plus, Trash2, CheckCircle, Shield, AlertCircle, MessageSquare, Search, Check, X, Clock, RefreshCw, Newspaper, ThumbsUp, ThumbsDown, Edit3, XCircle, FileText, Languages } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, CheckCircle, Shield, AlertCircle, MessageSquare, Search, Check, X, Clock, RefreshCw, Newspaper, ThumbsUp, ThumbsDown, Edit3, XCircle, FileText, Languages, ChevronDown } from 'lucide-react';
 import { convertLayout, convertTextToRu } from '../../utils/keyboardLayout';
 
 const TmaAdmin = () => {
@@ -1091,17 +1091,22 @@ const TmaAdmin = () => {
 
               <div>
                 <label className="text-[11px] font-bold text-slate-400 block mb-1">Статус голосования</label>
-                <select
-                  value={newsStatus}
-                  onChange={(e) => setNewsStatus(e.target.value)}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white"
-                >
-                  <option value="open">Открытое голосование</option>
-                  <option value="in_progress">В разработке (принято)</option>
-                  <option value="implemented">Реализовано (в игре)</option>
-                  <option value="rejected">Отклонено</option>
-                  <option value="closed">Голосование закрыто</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={newsStatus}
+                    onChange={(e) => setNewsStatus(e.target.value)}
+                    className="w-full appearance-none p-3 pr-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white cursor-pointer"
+                  >
+                    <option value="open" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Открытое голосование</option>
+                    <option value="in_progress" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">В разработке (принято)</option>
+                    <option value="implemented" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Реализовано (в игре)</option>
+                    <option value="rejected" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Отклонено</option>
+                    <option value="closed" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Голосование закрыто</option>
+                  </select>
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <ChevronDown size={14} />
+                  </div>
+                </div>
               </div>
 
               {newsStatus !== 'open' && (

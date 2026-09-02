@@ -70,6 +70,18 @@ button:active {
   transform: scale(0.97);
 }
 
+/* Select element cross-platform dark/light appearance reset */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+select option {
+  background-color: var(--secondary-bg);
+  color: var(--text-color);
+}
+
 /* Animations */
 @keyframes pulseGlow {
   0% { box-shadow: 0 0 20px rgba(249, 115, 22, 0.1); }

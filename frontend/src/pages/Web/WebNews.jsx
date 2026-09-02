@@ -3,7 +3,7 @@ import { NewsService } from '../../api/services/NewsService';
 import { useUser } from '../../context/UserContext';
 import { 
   ThumbsUp, ThumbsDown, Calendar, Sparkles, Plus, Edit3, Trash2, X, 
-  Lock, CheckCircle, Clock, XCircle, FileText, Check, Shield
+  Lock, CheckCircle, Clock, XCircle, FileText, Check, Shield, ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -602,17 +602,22 @@ const WebNews = () => {
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
                     Статус опроса
                   </label>
-                  <select
-                    value={formStatus}
-                    onChange={(e) => setFormStatus(e.target.value)}
-                    className="w-full p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white"
-                  >
-                    <option value="open">Открытое голосование</option>
-                    <option value="in_progress">В разработке</option>
-                    <option value="implemented">Реализовано</option>
-                    <option value="rejected">Отклонено</option>
-                    <option value="closed">Голосование закрыто</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={formStatus}
+                      onChange={(e) => setFormStatus(e.target.value)}
+                      className="w-full appearance-none p-3.5 pr-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white cursor-pointer"
+                    >
+                      <option value="open" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Открытое голосование</option>
+                      <option value="in_progress" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">В разработке</option>
+                      <option value="implemented" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Реализовано</option>
+                      <option value="rejected" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Отклонено</option>
+                      <option value="closed" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Голосование закрыто</option>
+                    </select>
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <ChevronDown size={16} />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-end gap-3 mt-4">
@@ -674,17 +679,22 @@ const WebNews = () => {
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
                     Статус решения
                   </label>
-                  <select
-                    value={resolveStatus}
-                    onChange={(e) => setResolveStatus(e.target.value)}
-                    className="w-full p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white"
-                  >
-                    <option value="in_progress">В разработке (принято)</option>
-                    <option value="implemented">Реализовано (в игре)</option>
-                    <option value="rejected">Отклонено</option>
-                    <option value="closed">Голосование закрыто</option>
-                    <option value="open">Открыть голосование заново</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={resolveStatus}
+                      onChange={(e) => setResolveStatus(e.target.value)}
+                      className="w-full appearance-none p-3.5 pr-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white cursor-pointer"
+                    >
+                      <option value="in_progress" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">В разработке (принято)</option>
+                      <option value="implemented" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Реализовано (в игре)</option>
+                      <option value="rejected" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Отклонено</option>
+                      <option value="closed" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Голосование закрыто</option>
+                      <option value="open" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Открыть голосование заново</option>
+                    </select>
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <ChevronDown size={16} />
+                    </div>
+                  </div>
                 </div>
 
                 <div>
