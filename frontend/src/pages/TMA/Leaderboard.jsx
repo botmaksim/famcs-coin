@@ -50,13 +50,18 @@ const Leaderboard = () => {
   };
   
   const renderPodiumItem = (user, rank) => {
-    if (!user) return <div className="w-1/3" />;
+    if (!user) return <div key={rank} className="w-1/3" />;
     
-    const heightMap = { 1: 'h-40', 2: 'h-32', 3: 'h-28' };
+    const heightPixelMap = { 1: 130, 2: 95, 3: 70 };
     const medalSize = { 1: 'w-16 h-16 -top-8', 2: 'w-12 h-12 -top-6', 3: 'w-10 h-10 -top-5' };
+    const borderGlow = {
+      1: 'ring-4 ring-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.35)]',
+      2: 'ring-4 ring-slate-300 shadow-[0_0_15px_rgba(203,213,225,0.3)]',
+      3: 'ring-4 ring-amber-700 shadow-[0_0_12px_rgba(180,83,9,0.3)]'
+    };
 
     return (
-      <div className="w-1/3 flex flex-col items-center justify-end relative">
+      <div key={rank} className="w-1/3 flex flex-col items-center justify-end relative">
         <motion.div 
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -64,9 +69,9 @@ const Leaderboard = () => {
           className="flex flex-col items-center z-10 mb-2"
         >
           <div className="relative">
-            <div className={`rounded-full bg-orange-100 flex items-center justify-center font-bold text-orange-500 overflow-hidden border-4 border-[var(--card-bg)] shadow-md ${rank === 1 ? 'w-20 h-20 text-2xl' : rank === 2 ? 'w-16 h-16 text-xl' : 'w-14 h-14 text-lg'}`}>
+            <div className={`rounded-full bg-orange-100 dark:bg-orange-950/40 flex items-center justify-center font-bold text-orange-500 overflow-hidden ${borderGlow[rank]} ${rank === 1 ? 'w-20 h-20 text-2xl' : rank === 2 ? 'w-16 h-16 text-xl' : 'w-14 h-14 text-lg'}`}>
               {user.avatar_url ? (
-                 <img src={user.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                 <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
               ) : (
                  (user.custom_name || user.username || 'U').charAt(0).toUpperCase()
               )}
@@ -89,29 +94,36 @@ const Leaderboard = () => {
             {user.custom_name || user.username}
           </div>
           <div className="text-[10px] font-bold text-orange-500 flex items-center justify-center gap-0.5 mt-0.5">
-            {sortBy !== 'bets_won' && <img src="/famcscoin.png" className="w-3 h-3" />}
+            {sortBy !== 'bets_won' && (
+              <img 
+                src="/famcscoin.png" 
+                alt=""
+                className="w-3 h-3 object-contain" 
+                onError={(e) => { e.target.src = '/famcscoin.jpg'; }}
+              />
+            )}
             {renderValue(user)}
           </div>
         </motion.div>
         
         <motion.div 
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
+          initial={{ height: 0 }}
+          animate={{ height: heightPixelMap[rank] }}
           transition={{ duration: 0.5, delay: rank * 0.15, type: "spring" }}
-          className={`w-full bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-xl ${heightMap[rank]} shadow-[inset_0_4px_10px_rgba(255,255,255,0.3)] flex justify-center pt-2 overflow-hidden`}
+          className="w-full bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-2xl shadow-[inset_0_4px_10px_rgba(255,255,255,0.3)] flex justify-center pt-2.5 overflow-hidden"
         >
-           <span className="text-white/80 font-black text-2xl drop-shadow-sm">{rank}</span>
+           <span className="text-white/90 font-black text-2xl drop-shadow-sm">#{rank}</span>
         </motion.div>
       </div>
     );
   };
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto overflow-x-hidden pb-24">
-      <div className="p-5 pb-0 sticky top-0 z-40 bg-[var(--card-bg)]/90 backdrop-blur-md">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <img src="/icon_leaderboard.png" alt="Топ" className="w-8 h-8 object-contain drop-shadow-sm" />
+    <div className="flex flex-col pb-28">
+      <div className="p-5 pb-0 sticky top-0 z-40 bg-[var(--card-bg)]/90 backdrop-blur-md border-b border-[var(--glass-border)]">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2.5">
+            <img src="/icon_leaderboard.png" alt="" className="w-7 h-7 object-contain drop-shadow-sm" />
             <h2 className="text-2xl font-black text-slate-800 dark:text-white m-0">Топ</h2>
           </div>
           <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl">
@@ -130,7 +142,7 @@ const Leaderboard = () => {
           </div>
         </div>
         
-        <div className="flex overflow-x-auto gap-2 pb-3 snap-x scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+        <div className="grid grid-cols-2 gap-2 pb-3">
           {[
             { id: 'balance', label: 'По балансу' },
             { id: 'income', label: 'По доходу' },
@@ -140,7 +152,7 @@ const Leaderboard = () => {
             <button 
               key={opt.id}
               onClick={() => setSortBy(opt.id)}
-              className={`whitespace-nowrap px-4 py-2 text-sm font-bold rounded-xl transition-all snap-start ${sortBy === opt.id ? 'bg-orange-500 text-white shadow-[0_4px_14px_0_rgba(249,115,22,0.39)]' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}
+              className={`py-2 px-2.5 text-xs font-bold rounded-xl transition-all text-center ${sortBy === opt.id ? 'bg-orange-500 text-white shadow-[0_4px_14px_0_rgba(249,115,22,0.39)]' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
             >
               {opt.label}
             </button>
@@ -151,9 +163,9 @@ const Leaderboard = () => {
       {loading ? (
          <div className="text-center py-20 font-medium text-slate-500">Загрузка...</div>
       ) : (
-        <div className="px-5">
+        <div className="px-5 mt-3">
           {top3.length > 0 && (
-            <div className="flex items-end justify-center h-56 mb-8 mt-2">
+            <div className="flex items-end justify-center min-h-[240px] mb-8 mt-1 px-1">
               {renderPodiumItem(podiumUsers[0], 2)}
               {renderPodiumItem(podiumUsers[1], 1)}
               {renderPodiumItem(podiumUsers[2], 3)}

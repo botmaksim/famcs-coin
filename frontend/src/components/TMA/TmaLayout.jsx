@@ -9,11 +9,11 @@ export const TmaLayout = ({ children }) => {
   const { loading } = useUser();
   
   return (
-    <div className="tma-container max-w-[480px] mx-auto min-h-screen relative bg-[var(--bg-color)] border-x border-[var(--glass-border)]">
+    <div className="tma-container max-w-[480px] mx-auto h-screen flex flex-col relative bg-[var(--bg-color)] border-x border-[var(--glass-border)] overflow-hidden">
       <SplashScreen isLoading={loading} />
       <OnboardingTour />
       <TmaHeader />
-      <div className="tma-scrollable-content pb-[80px] h-[calc(100vh-130px)] overflow-y-auto">
+      <div className="tma-scrollable-content flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
         {children}
       </div>
       <TmaBottomNav />
