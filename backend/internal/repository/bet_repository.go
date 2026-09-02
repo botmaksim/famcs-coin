@@ -50,6 +50,7 @@ func (r *betRepository) GetBets(ctx context.Context, userID int64) ([]models.Bet
 			continue
 		}
 		json.Unmarshal(optionsRaw, &b.Options)
+		b.UserBetOptionCompat = b.UserBetOption
 		
 		// Calculate pools
 		poolsQuery := `SELECT option_index, SUM(amount) FROM user_bets WHERE event_id = $1 GROUP BY option_index`

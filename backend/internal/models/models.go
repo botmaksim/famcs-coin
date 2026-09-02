@@ -69,9 +69,10 @@ type BetEvent struct {
 	CreatedAt      time.Time `json:"created_at"`
 	
 	// Aggregated fields for frontend
-	Pools          []float64 `json:"pools"`
-	UserBetOption  *int      `json:"user_bet_option_index,omitempty"`
-	UserBetAmount  *float64  `json:"user_bet_amount,omitempty"`
+	Pools               []float64 `json:"pools"`
+	UserBetOption       *int      `json:"user_bet_option_index,omitempty"`
+	UserBetOptionCompat *int      `json:"user_bet_option,omitempty"`
+	UserBetAmount       *float64  `json:"user_bet_amount,omitempty"`
 }
 
 type UserBet struct {

@@ -75,7 +75,7 @@ const Bets = () => {
               
               {bet.user_bet_amount > 0 && (
                 <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/40 rounded-xl text-xs font-bold text-orange-600 dark:text-orange-400">
-                  Ваша ставка: {Math.floor(bet.user_bet_amount).toLocaleString()} коинов на «{bet.options?.[bet.user_bet_option]}»
+                  Ваша ставка: {Math.floor(bet.user_bet_amount).toLocaleString()} коинов на «{bet.options?.[bet.user_bet_option_index ?? bet.user_bet_option] ?? 'Выбранный вариант'}»
                 </div>
               )}
 
