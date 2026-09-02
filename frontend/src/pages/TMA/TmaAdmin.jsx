@@ -4,13 +4,14 @@ import { useUser } from '../../context/UserContext';
 import { AdminService } from '../../api/services/AdminService';
 import { BetsService } from '../../api/services/BetsService';
 import { ShopService } from '../../api/services/ShopService';
-import { ArrowLeft, Plus, Trash2, CheckCircle, Shield, AlertCircle } from 'lucide-react';
+import { FeedbackService } from '../../api/services/FeedbackService';
+import { ArrowLeft, Plus, Trash2, CheckCircle, Shield, AlertCircle, MessageSquare, Search, Check, X, Clock, RefreshCw } from 'lucide-react';
 
 const TmaAdmin = () => {
   const { user } = useUser();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState('bets'); // 'bets' | 'shop'
+  const [activeTab, setActiveTab] = useState('bets'); // 'bets' | 'shop' | 'feedback'
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
 
@@ -30,20 +31,40 @@ const TmaAdmin = () => {
   const [itemProfit, setItemProfit] = useState('');
   const [itemImage, setItemImage] = useState('/famcscoin.png');
 
+  // Feedback State
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [feedbackFilter, setFeedbackFilter] = useState('all'); // 'all' | 'pending' | 'approved' | 'rejected'
+  const [feedbackSearch, setFeedbackSearch] = useState('');
+
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
     try {
-      const [betsRes, shopRes] = await Promise.all([
+      const [betsRes, shopRes, feedbackRes] = await Promise.all([
         BetsService.getActiveBets(),
-        ShopService.getItems()
+        ShopService.getItems(),
+        FeedbackService.getFeedback().catch(() => ({ data: [] }))
       ]);
       setBets(betsRes.data || []);
       setShopItems(shopRes.data || []);
+      setFeedbacks(feedbackRes.data || []);
     } catch (err) {
       console.error('Failed to load admin data', err);
+    }
+  };
+
+  const handleUpdateFeedbackStatus = async (feedbackId, status) => {
+    setLoading(true);
+    try {
+      await AdminService.updateFeedbackStatus(feedbackId, status);
+      setFeedbacks(prev => prev.map(f => f.id === feedbackId ? { ...f, status } : f));
+      showNotification('Статус отзыва успешно обновлен!');
+    } catch (err) {
+      showNotification(err.response?.data || 'Ошибка при обновлении статуса', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -217,19 +238,32 @@ const TmaAdmin = () => {
       <div className="flex bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl mb-6">
         <button
           onClick={() => setActiveTab('bets')}
-          className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${
+          className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${
             activeTab === 'bets' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'
           }`}
         >
-          Менеджмент ставок
+          Ставки
         </button>
         <button
           onClick={() => setActiveTab('shop')}
-          className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${
+          className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${
             activeTab === 'shop' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'
           }`}
         >
-          Магазин и доход
+          Магазин
+        </button>
+        <button
+          onClick={() => setActiveTab('feedback')}
+          className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === 'feedback' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'
+          }`}
+        >
+          Отзывы
+          {feedbacks.length > 0 && (
+            <span className="px-1.5 py-0.2 bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 rounded-full text-[10px]">
+              {feedbacks.length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -514,6 +548,165 @@ const TmaAdmin = () => {
                 <div className="text-sm text-slate-400 text-center py-6">В магазине пока нет товаров</div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* === FEEDBACK TAB === */}
+      {activeTab === 'feedback' && (
+        <div className="flex flex-col gap-5">
+          {/* Header & Stats */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700 shadow-sm">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                  <MessageSquare size={20} className="text-orange-500" />
+                  Отзывы и предложения
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Всего отзывов: {feedbacks.length}
+                </p>
+              </div>
+              <button
+                onClick={loadData}
+                disabled={loading}
+                className="p-2 text-slate-500 hover:text-orange-500 bg-slate-100 dark:bg-slate-700/60 rounded-xl transition"
+                title="Обновить список"
+              >
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative mb-3.5">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={feedbackSearch}
+                onChange={(e) => setFeedbackSearch(e.target.value)}
+                placeholder="Поиск по автору или тексту..."
+                className="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 text-xs text-slate-800 dark:text-white"
+              />
+            </div>
+
+            {/* Status Filter Chips */}
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { id: 'all', label: 'Все' },
+                { id: 'pending', label: 'На рассмотрении' },
+                { id: 'approved', label: 'Одобренные' },
+                { id: 'rejected', label: 'Отклонённые' }
+              ].map(chip => (
+                <button
+                  key={chip.id}
+                  onClick={() => setFeedbackFilter(chip.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    feedbackFilter === chip.id
+                      ? 'bg-orange-500 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                  }`}
+                >
+                  {chip.label}
+                  {chip.id !== 'all' && (
+                    <span className="ml-1 opacity-75">
+                      ({feedbacks.filter(f => f.status === chip.id).length})
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Feedback Cards List */}
+          <div className="flex flex-col gap-3">
+            {feedbacks
+              .filter(f => {
+                const matchesFilter = feedbackFilter === 'all' || f.status === feedbackFilter;
+                const matchesSearch = !feedbackSearch || 
+                  (f.username && f.username.toLowerCase().includes(feedbackSearch.toLowerCase())) ||
+                  (f.text && f.text.toLowerCase().includes(feedbackSearch.toLowerCase()));
+                return matchesFilter && matchesSearch;
+              })
+              .map(item => (
+                <div 
+                  key={item.id} 
+                  className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col gap-3"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-1.5">
+                        <span>@{item.username || 'Аноним'}</span>
+                        <span className="text-[10px] text-slate-400 font-normal">#{item.user_id}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                        <Clock size={11} />
+                        {new Date(item.created_at).toLocaleString('ru-RU')}
+                      </div>
+                    </div>
+
+                    {/* Status Badge */}
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                      item.status === 'approved' 
+                        ? 'bg-green-100 dark:bg-green-950/40 text-green-600 dark:text-green-400 border border-green-200/50' 
+                        : item.status === 'rejected'
+                        ? 'bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200/50'
+                        : 'bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/50'
+                    }`}>
+                      {item.status === 'approved' ? 'Одобрено' : item.status === 'rejected' ? 'Отклонено' : 'На рассмотрении'}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                    {item.text}
+                  </p>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                    <button
+                      onClick={() => handleUpdateFeedbackStatus(item.id, 'approved')}
+                      disabled={loading || item.status === 'approved'}
+                      className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition ${
+                        item.status === 'approved'
+                          ? 'opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-700 text-slate-400'
+                          : 'bg-green-500 hover:bg-green-600 text-white shadow-sm'
+                      }`}
+                    >
+                      <Check size={13} />
+                      Одобрить
+                    </button>
+
+                    <button
+                      onClick={() => handleUpdateFeedbackStatus(item.id, 'rejected')}
+                      disabled={loading || item.status === 'rejected'}
+                      className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition ${
+                        item.status === 'rejected'
+                          ? 'opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-700 text-slate-400'
+                          : 'bg-red-500 hover:bg-red-600 text-white shadow-sm'
+                      }`}
+                    >
+                      <X size={13} />
+                      Отклонить
+                    </button>
+
+                    {item.status !== 'pending' && (
+                      <button
+                        onClick={() => handleUpdateFeedbackStatus(item.id, 'pending')}
+                        disabled={loading}
+                        className="py-1.5 px-2.5 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-700 bg-slate-100 dark:bg-slate-700 transition"
+                        title="Вернуть в рассмотрение"
+                      >
+                        Сбросить
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+            {feedbacks.length === 0 && (
+              <div className="text-center py-12 text-slate-400 text-xs font-medium bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                Пока нет ни одного отзыва
+              </div>
+            )}
           </div>
         </div>
       )}
