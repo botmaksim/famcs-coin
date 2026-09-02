@@ -35,10 +35,17 @@ const WebNavbar = () => {
         />
         <Link to="/" className="text-xl font-black text-slate-800 dark:text-white no-underline tracking-wide hover:opacity-80 transition-opacity">FAMCS</Link>
       </div>
-      <div className="flex gap-7">
+      <div className="flex items-center gap-7">
         <Link to="/info" className="text-slate-600 dark:text-slate-300 hover:text-orange-500 font-medium transition-colors">Информация</Link>
         <Link to="/leaderboard" className="text-slate-600 dark:text-slate-300 hover:text-orange-500 font-medium transition-colors">Рейтинг</Link>
-        <Link to="/feedback" className="text-slate-600 dark:text-slate-300 hover:text-orange-500 font-medium transition-colors">Отзывы</Link>
+        <a 
+          href={`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'famcs_coin_bot'}/app`} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-orange-500 font-bold hover:text-orange-600 transition-colors flex items-center gap-1 text-sm bg-orange-50 dark:bg-orange-950/40 px-3.5 py-1.5 rounded-full border border-orange-200/60 dark:border-orange-800/40"
+        >
+          Играть в Telegram
+        </a>
       </div>
       <div className="flex items-center gap-6">
         <button 

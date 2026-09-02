@@ -106,7 +106,6 @@ function App() {
               <Route path="/" element={<WebLayout><WebLanding /></WebLayout>} />
               <Route path="/info" element={<WebLayout><WebInfo /></WebLayout>} />
               <Route path="/leaderboard" element={<WebLayout><WebLeaderboard /></WebLayout>} />
-              <Route path="/feedback" element={<WebLayout><WebFeedback /></WebLayout>} />
               <Route path="/admin-panel" element={<WebLayout><WebAdmin /></WebLayout>} />
               
               <Route path="/app/*" element={
