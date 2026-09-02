@@ -5,6 +5,7 @@ import { UserService } from '../../api/services/UserService';
 import { ShopService } from '../../api/services/ShopService';
 import { Skeleton } from '../../components/Skeleton';
 import { playTapSound } from '../../utils/audio';
+import { Zap, Clock, CheckCircle2 } from 'lucide-react';
 
 const Terminal = () => {
   const { user, updateLocalUser, loading, error, fetchProfile, soundEnabled } = useUser();
@@ -186,17 +187,72 @@ const Terminal = () => {
       </div>
 
       {/* Energy Bar area */}
-      <div className="text-center mb-8 tour-energy">
-        <div className="text-sm font-bold mb-1 flex justify-center items-center text-orange-500">
-          {user.energy} / {user.max_energy || user.maxEnergy || 1000}
-        </div>
-        <div className="w-full h-3 bg-slate-200 dark:bg-slate-800/50 rounded-full overflow-hidden shadow-inner border border-white/20 dark:border-slate-800">
-          <div 
-            className="h-full bg-gradient-to-r from-orange-500 to-orange-400 transition-all duration-100 ease-out"
-            style={{ width: `${Math.min(100, (user.energy / (user.max_energy || user.maxEnergy || 1000)) * 100)}%` }}
-          ></div>
-        </div>
-      </div>
+      {(() => {
+        const maxEnergy = user.max_energy || user.maxEnergy || 1000;
+        const currentEnergy = Math.min(maxEnergy, Math.max(0, user.energy || 0));
+        const isFull = currentEnergy >= maxEnergy;
+        const remainingEnergy = Math.max(0, maxEnergy - currentEnergy);
+        const secondsLeft = Math.ceil(remainingEnergy / 3);
+
+        const formatTimeLeft = (sec) => {
+          if (sec <= 0) return '';
+          const m = Math.floor(sec / 60);
+          const s = sec % 60;
+          if (m > 0) {
+            return `${m} мин ${s} сек`;
+          }
+          return `${s} сек`;
+        };
+
+        return (
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-100 dark:border-slate-700/60 rounded-2xl p-3.5 mb-8 shadow-sm tour-energy">
+            <div className="flex justify-between items-center mb-2">
+              <div className="flex items-center gap-1.5 font-black text-sm text-slate-800 dark:text-white">
+                <Zap size={16} className={isFull ? "text-slate-400" : "text-amber-500 fill-amber-500 animate-pulse"} />
+                <span>{currentEnergy}</span>
+                <span className="text-slate-400 text-xs font-semibold">/ {maxEnergy}</span>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/40">
+                {!isFull && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>}
+                +3 / сек
+              </div>
+            </div>
+
+            {/* Progress Bar with animated energy glow */}
+            <div className="w-full h-3.5 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden shadow-inner relative border border-slate-200/60 dark:border-slate-700/60">
+              <div 
+                className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 transition-all duration-300 ease-out relative"
+                style={{ width: `${Math.min(100, (currentEnergy / maxEnergy) * 100)}%` }}
+              >
+                {!isFull && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_1.5s_infinite] -skew-x-12"></div>
+                )}
+              </div>
+            </div>
+
+            {/* Recovery time countdown */}
+            <div className="flex justify-between items-center mt-2.5 text-xs font-semibold">
+              {isFull ? (
+                <div className="flex items-center gap-1 text-emerald-500 font-bold w-full justify-center">
+                  <CheckCircle2 size={13} />
+                  <span>Шкала энергии полностью заполнена</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 w-full justify-between">
+                  <span className="flex items-center gap-1">
+                    <Clock size={13} className="text-orange-500" />
+                    Полное восстановление:
+                  </span>
+                  <span className="font-bold text-orange-500 dark:text-orange-400">
+                    через {formatTimeLeft(secondsLeft)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Main Clicker Area */}
       <div className="flex justify-center items-center flex-col mb-12">
