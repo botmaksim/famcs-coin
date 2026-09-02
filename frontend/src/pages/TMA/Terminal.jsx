@@ -127,7 +127,7 @@ const Terminal = () => {
       </div>
 
       {/* Energy Bar area */}
-      <div className="text-center mb-8">
+      <div className="text-center mb-8 tour-energy">
         <div className="text-sm font-bold mb-1 flex justify-center items-center text-orange-500">
           {user.energy} / {user.maxEnergy || 1000}
         </div>
@@ -175,7 +175,7 @@ const Terminal = () => {
       </div>
 
       {/* Shop Area */}
-      <div className="mt-4">
+      <div className="mt-4 tour-shop">
         <h3 className="text-xl font-bold mb-4 text-slate-800 dark:text-white">Магазин улучшений</h3>
         {loadingShop ? (
            <Skeleton className="w-full h-24 rounded-2xl mb-3" />
