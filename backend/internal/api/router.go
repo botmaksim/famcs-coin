@@ -75,6 +75,8 @@ func SetupRouter(pool *pgxpool.Pool, botToken string) http.Handler {
 	adminMux.Handle("POST /api/admin/shop", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(adminHandler.CreateShopItem)))
 	adminMux.Handle("DELETE /api/admin/shop", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(adminHandler.DeleteShopItem)))
 	adminMux.Handle("POST /api/admin/feedback/status", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(adminHandler.UpdateFeedbackStatus)))
+	adminMux.Handle("POST /api/admin/feedback/delete", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(adminHandler.DeleteFeedback)))
+	adminMux.Handle("DELETE /api/admin/feedback", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(adminHandler.DeleteFeedback)))
 	adminMux.Handle("POST /api/admin/news", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(newsHandler.CreateNews)))
 	adminMux.Handle("PUT /api/admin/news", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(newsHandler.UpdateNews)))
 	adminMux.Handle("POST /api/admin/news/update", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(newsHandler.UpdateNews)))

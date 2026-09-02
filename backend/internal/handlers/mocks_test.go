@@ -120,6 +120,10 @@ func (m *MockFeedbackRepository) UpdateStatus(ctx context.Context, id int, statu
 	return m.Called(ctx, id, status).Error(0)
 }
 
+func (m *MockFeedbackRepository) DeleteFeedback(ctx context.Context, id int) error {
+	return m.Called(ctx, id).Error(0)
+}
+
 type MockNewsRepository struct {
 	mock.Mock
 }

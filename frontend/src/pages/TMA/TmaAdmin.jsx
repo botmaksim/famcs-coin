@@ -202,6 +202,20 @@ const TmaAdmin = () => {
     }
   };
 
+  const handleDeleteFeedback = async (feedbackId) => {
+    if (!confirm('Вы уверены, что хотите удалить этот отзыв?')) return;
+    setLoading(true);
+    try {
+      await AdminService.deleteFeedback(feedbackId);
+      setFeedbacks(prev => prev.filter(f => f.id !== feedbackId));
+      showNotification('Отзыв успешно удален!');
+    } catch (err) {
+      showNotification(err.response?.data || 'Ошибка при удалении отзыва', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const showNotification = (text, type = 'success') => {
     setMessage({ text, type });
     setTimeout(() => setMessage({ text: '', type: '' }), 4000);
@@ -850,16 +864,15 @@ const TmaAdmin = () => {
                       Отклонить
                     </button>
 
-                    {item.status !== 'pending' && (
-                      <button
-                        onClick={() => handleUpdateFeedbackStatus(item.id, 'pending')}
-                        disabled={loading}
-                        className="py-1.5 px-2.5 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-700 bg-slate-100 dark:bg-slate-700 transition"
-                        title="Вернуть в рассмотрение"
-                      >
-                        Сбросить
-                      </button>
-                    )}
+                    <button
+                      onClick={() => handleDeleteFeedback(item.id)}
+                      disabled={loading}
+                      className="py-1.5 px-2.5 rounded-xl text-xs font-semibold text-rose-500 hover:text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-950/50 transition flex items-center gap-1"
+                      title="Удалить отзыв"
+                    >
+                      <Trash2 size={12} />
+                      <span>Удалить</span>
+                    </button>
                   </div>
                 </div>
               ))}

@@ -135,3 +135,21 @@ func (h *AdminHandler) UpdateFeedbackStatus(w http.ResponseWriter, r *http.Reque
 
 	w.WriteHeader(http.StatusOK)
 }
+
+func (h *AdminHandler) DeleteFeedback(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		FeedbackID int `json:"feedback_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		return
+	}
+
+	err := h.feedbackRepo.DeleteFeedback(r.Context(), req.FeedbackID)
+	if err != nil {
+		http.Error(w, "Failed to delete feedback", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}

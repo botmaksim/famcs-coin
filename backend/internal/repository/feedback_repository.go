@@ -11,6 +11,7 @@ type FeedbackRepository interface {
 	GetFeedbacks(ctx context.Context) ([]models.Feedback, error)
 	CreateFeedback(ctx context.Context, userID int64, text string) error
 	UpdateStatus(ctx context.Context, id int, status string) error
+	DeleteFeedback(ctx context.Context, id int) error
 }
 
 type feedbackRepository struct {
@@ -51,5 +52,10 @@ func (r *feedbackRepository) CreateFeedback(ctx context.Context, userID int64, t
 
 func (r *feedbackRepository) UpdateStatus(ctx context.Context, id int, status string) error {
 	_, err := r.db.Exec(ctx, `UPDATE feedbacks SET status = $1 WHERE id = $2`, status, id)
+	return err
+}
+
+func (r *feedbackRepository) DeleteFeedback(ctx context.Context, id int) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM feedbacks WHERE id = $1`, id)
 	return err
 }
