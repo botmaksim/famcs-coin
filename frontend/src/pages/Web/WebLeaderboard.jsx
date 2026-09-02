@@ -207,65 +207,125 @@ const WebLeaderboard = () => {
 
           {/* Table for remaining players */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
-                  <th className="p-4 w-20 text-center font-bold text-slate-500 uppercase tracking-wider text-xs">Ранг</th>
-                  <th className="p-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Студент</th>
-                  <th className="p-4 text-right font-bold text-slate-500 uppercase tracking-wider text-xs">
-                    {sortBy === 'income' ? 'Доход в час' : sortBy === 'bets_won' ? 'Угадано ставок' : sortBy === 'bets_profit' ? 'Профит со ставок' : 'Баланс'}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rest?.map((item, index) => {
-                  const actualRank = index + 4;
-                  return (
-                    <tr
-                      key={item.tg_id || index}
-                      className="border-b border-slate-100 dark:border-slate-700/60 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/30"
-                    >
-                      <td className="p-4 text-center font-bold text-slate-400 text-base">
-                        #{actualRank}
-                      </td>
-                      <td className="p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-500 flex justify-center items-center overflow-hidden font-bold text-sm">
-                          {item.avatar_url ? (
-                            <img src={item.avatar_url} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            (item.custom_name || item.username || 'U').charAt(0).toUpperCase()
-                          )}
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-800 dark:text-white text-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left min-w-[720px]">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700 text-xs uppercase tracking-wider">
+                    <th className="p-4 w-16 text-center font-bold text-slate-500">Ранг</th>
+                    <th className="p-4 font-bold text-slate-500">Студент</th>
+                    {[
+                      { id: 'balance', label: 'Баланс', hasCoin: true },
+                      { id: 'income', label: 'Доход в час', hasCoin: true },
+                      { id: 'bets_won', label: 'Угадано ставок', hasCoin: false },
+                      { id: 'bets_profit', label: 'Профит со ставок', hasCoin: true },
+                    ].map((m) => {
+                      const isActive = sortBy === m.id;
+                      return (
+                        <th
+                          key={m.id}
+                          onClick={() => setSortBy(m.id)}
+                          className={`p-4 text-right cursor-pointer select-none transition-all ${
+                            isActive
+                              ? 'text-orange-500 font-black bg-orange-500/10 dark:bg-orange-500/15 border-b-2 border-orange-500'
+                              : 'font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                          }`}
+                          title={`Сортировка: ${m.label}`}
+                        >
+                          <div className="inline-flex items-center gap-1">
+                            <span>{m.label}</span>
+                            {isActive && <span className="text-orange-500 text-[10px]">▼</span>}
+                          </div>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rest?.map((item, index) => {
+                    const actualRank = index + 4;
+
+                    const formatMetric = (metricId) => {
+                      switch (metricId) {
+                        case 'balance':
+                          return Math.floor(item.balance || 0).toLocaleString('ru-RU');
+                        case 'income':
+                          return `+${Math.floor(item.passive_income || 0).toLocaleString('ru-RU')}/ч`;
+                        case 'bets_won':
+                          return `${item.bets_won || 0} шт.`;
+                        case 'bets_profit': {
+                          const profit = Math.floor(item.bets_profit || 0);
+                          return (profit >= 0 ? `+` : ``) + profit.toLocaleString('ru-RU');
+                        }
+                        default:
+                          return '—';
+                      }
+                    };
+
+                    return (
+                      <tr
+                        key={item.tg_id || index}
+                        className="border-b border-slate-100 dark:border-slate-700/60 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/30"
+                      >
+                        <td className="p-4 text-center font-bold text-slate-400 text-sm">
+                          #{actualRank}
+                        </td>
+                        <td className="p-4 flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-500 flex justify-center items-center overflow-hidden font-bold text-xs flex-shrink-0">
+                            {item.avatar_url ? (
+                              <img src={item.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              (item.custom_name || item.username || 'U').charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <div className="font-bold text-slate-800 dark:text-white text-sm truncate max-w-[150px]">
                             {item.custom_name || `@${item.username}`}
                           </div>
-                        </div>
-                      </td>
-                      <td className="p-4 text-right font-bold text-orange-500 text-sm">
-                        {renderValue(item)}
-                        {sortBy !== 'bets_won' && (
-                          <img
-                            src="/famcscoin.png"
-                            alt=""
-                            className="inline w-3.5 h-3.5 rounded-full -mt-1 ml-1.5 object-contain"
-                            onError={(e) => { e.target.src = '/famcscoin.jpg'; }}
-                          />
-                        )}
+                        </td>
+
+                        {[
+                          { id: 'balance', hasCoin: true },
+                          { id: 'income', hasCoin: true },
+                          { id: 'bets_won', hasCoin: false },
+                          { id: 'bets_profit', hasCoin: true },
+                        ].map((m) => {
+                          const isActive = sortBy === m.id;
+                          return (
+                            <td
+                              key={m.id}
+                              className={`p-4 text-right text-sm whitespace-nowrap transition-all ${
+                                isActive
+                                  ? 'font-black text-orange-500 bg-orange-500/5 dark:bg-orange-500/10'
+                                  : 'font-semibold text-slate-600 dark:text-slate-400'
+                              }`}
+                            >
+                              <div className="inline-flex items-center justify-end gap-1">
+                                <span>{formatMetric(m.id)}</span>
+                                {m.hasCoin && (
+                                  <img
+                                    src="/famcscoin.png"
+                                    alt=""
+                                    className="w-3.5 h-3.5 object-contain"
+                                    onError={(e) => { e.target.src = '/famcscoin.jpg'; }}
+                                  />
+                                )}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+
+                  {players.length === 0 && (
+                    <tr>
+                      <td colSpan="6" className="p-16 text-center text-slate-400 text-base font-medium">
+                        Нет данных для отображения за выбранный период
                       </td>
                     </tr>
-                  );
-                })}
-
-                {players.length === 0 && (
-                  <tr>
-                    <td colSpan="3" className="p-16 text-center text-slate-400 text-base font-medium">
-                      Нет данных для отображения за выбранный период
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       )}
