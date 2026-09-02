@@ -162,6 +162,15 @@ const Bets = () => {
   }, []);
 
   const handleSelectOption = (eventId, optionIndex) => {
+    const bet = bets.find(b => b.id === eventId);
+    const userBetOpt = bet?.user_bet_option_index ?? bet?.user_bet_option;
+    const hasBet = (bet?.user_bet_amount || 0) > 0 && userBetOpt !== undefined && userBetOpt !== null;
+
+    if (hasBet && userBetOpt !== optionIndex) {
+      showError(`Вы уже поставили на «${bet?.options?.[userBetOpt] || 'другой вариант'}». В тотализаторе можно ставить только на один вариант!`);
+      return;
+    }
+
     setSelectedOptions(prev => ({
       ...prev,
       [eventId]: optionIndex
@@ -360,6 +369,7 @@ const Bets = () => {
                       : Math.round(100 / (bet.options?.length || 1));
                     const isSelected = selectedOptIdx === optIdx;
                     const isUserChoice = hasUserBet && userBetOptIdx === optIdx;
+                    const isLockedOut = hasUserBet && userBetOptIdx !== optIdx;
 
                     return (
                       <button
@@ -367,27 +377,42 @@ const Bets = () => {
                         type="button"
                         onClick={() => isOpen && handleSelectOption(bet.id, optIdx)}
                         className={`w-full p-3 rounded-2xl border transition flex items-center justify-between text-left ${
-                          isOpen ? 'cursor-pointer' : 'cursor-default'
+                          isLockedOut 
+                            ? 'opacity-40 cursor-not-allowed border-slate-200/50 dark:border-slate-800/50 bg-slate-100/40 dark:bg-slate-900/20'
+                            : isOpen ? 'cursor-pointer' : 'cursor-default'
                         } ${
-                          isSelected
+                          (isSelected || isUserChoice) && !isLockedOut
                             ? `${color.border} ${color.softBg} ${color.ring}`
-                            : 'border-slate-200 dark:border-slate-700/70 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100/80 dark:hover:bg-slate-800/80'
+                            : !isLockedOut ? 'border-slate-200 dark:border-slate-700/70 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100/80 dark:hover:bg-slate-800/80' : ''
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                          <div className={`w-3.5 h-3.5 rounded-full ${color.dot} shrink-0 flex items-center justify-center text-white`}>
-                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          <div className={`w-3.5 h-3.5 rounded-full ${isLockedOut ? 'bg-slate-300 dark:bg-slate-700' : color.dot} shrink-0 flex items-center justify-center text-white`}>
+                            {(isSelected || isUserChoice) && !isLockedOut && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                           </div>
-                          <span className={`font-bold text-sm truncate ${
-                            isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-200'
-                          }`}>
-                            {opt}
-                          </span>
-                          {isUserChoice && (
-                            <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-md bg-orange-500 text-white shrink-0">
-                              Ваш выбор
-                            </span>
-                          )}
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold text-sm truncate ${
+                                (isSelected || isUserChoice) && !isLockedOut
+                                  ? 'text-slate-900 dark:text-white'
+                                  : isLockedOut
+                                  ? 'text-slate-400 dark:text-slate-500'
+                                  : 'text-slate-700 dark:text-slate-200'
+                              }`}>
+                                {opt}
+                              </span>
+                              {isUserChoice && (
+                                <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-md bg-orange-500 text-white shrink-0">
+                                  Ваш выбор
+                                </span>
+                              )}
+                            </div>
+                            {isLockedOut && (
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                                Недоступно (выбран другой исход)
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Pool and Percentage Badge with Option Color */}
@@ -435,7 +460,7 @@ const Bets = () => {
                       <div className="relative flex-1">
                         <input
                           type="number"
-                          placeholder={selectedOptIdx !== undefined ? "Сумма коинов" : "Сначала выберите вариант"}
+                          placeholder={hasUserBet ? "Добавить к ставке" : selectedOptIdx !== undefined ? "Сумма коинов" : "Сначала выберите вариант"}
                           min="1"
                           max={user?.balance || 0}
                           value={currentAmount}
@@ -453,7 +478,9 @@ const Bets = () => {
                         disabled={selectedOptIdx === undefined || !currentAmount || Number(currentAmount) <= 0 || Number(currentAmount) > (user?.balance || 0)}
                         className="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-md transition disabled:opacity-40 disabled:pointer-events-none cursor-pointer shrink-0"
                       >
-                        {selectedOptIdx !== undefined
+                        {hasUserBet
+                          ? `Увеличить ставку ${currentAmount && Number(currentAmount) > 0 ? `(+${Number(currentAmount).toLocaleString()} FC)` : ''}`
+                          : selectedOptIdx !== undefined
                           ? `Поставить на «${bet.options?.[selectedOptIdx]}»`
                           : "Выберите вариант"}
                       </button>
