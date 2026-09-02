@@ -140,16 +140,22 @@ func (r *userRepository) ProcessClick(ctx context.Context, userID int64, coins f
 		return err
 	}
 
-	if currentEnergy < energyCost {
+	if currentEnergy <= 0 {
 		return fmt.Errorf("insufficient energy")
 	}
 
-	_, err = tx.Exec(ctx, `UPDATE users SET balance = balance + $1, energy = energy - $2, last_active_at = CURRENT_TIMESTAMP WHERE tg_id = $3`, coins, energyCost, userID)
+	actualClicks := energyCost
+	if currentEnergy < actualClicks {
+		actualClicks = currentEnergy
+	}
+	actualCoins := float64(actualClicks)
+
+	_, err = tx.Exec(ctx, `UPDATE users SET balance = balance + $1, energy = energy - $2, last_active_at = CURRENT_TIMESTAMP WHERE tg_id = $3`, actualCoins, actualClicks, userID)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec(ctx, `INSERT INTO transactions (user_id, amount, type) VALUES ($1, $2, 'click')`, userID, coins)
+	_, err = tx.Exec(ctx, `INSERT INTO transactions (user_id, amount, type) VALUES ($1, $2, 'click')`, userID, actualCoins)
 	if err != nil {
 		return err
 	}

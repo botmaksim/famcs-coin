@@ -15,7 +15,8 @@ export const useUser = () => {
       const response = await UserService.getProfile();
       return response.data;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 2000,
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {

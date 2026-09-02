@@ -28,9 +28,74 @@ const Terminal = () => {
     fetchShop();
   }, []);
 
-  // Keep track of unsynced clicks
+  // Keep track of unsynced clicks with localStorage fallback
   const pendingClicksRef = useRef(0);
+  const isSyncingRef = useRef(false);
   const syncTimeoutRef = useRef(null);
+
+  const syncClicks = async () => {
+    if (isSyncingRef.current || pendingClicksRef.current <= 0) return;
+
+    const count = pendingClicksRef.current;
+    pendingClicksRef.current = 0;
+    localStorage.removeItem('pending_clicks');
+
+    isSyncingRef.current = true;
+    try {
+      await UserService.click(count);
+      await fetchProfile();
+    } catch (err) {
+      console.error('Failed to sync clicks', err);
+      // Restore clicks if sync failed
+      pendingClicksRef.current += count;
+      localStorage.setItem('pending_clicks', pendingClicksRef.current.toString());
+    } finally {
+      isSyncingRef.current = false;
+      if (pendingClicksRef.current > 0) {
+        setTimeout(syncClicks, 500);
+      }
+    }
+  };
+
+  useEffect(() => {
+    // Recover unsynced clicks from previous session if any
+    const savedClicks = parseInt(localStorage.getItem('pending_clicks') || '0', 10);
+    if (savedClicks > 0) {
+      pendingClicksRef.current = savedClicks;
+      syncClicks();
+    }
+
+    // Periodic flush every 1.5s during active clicking
+    const interval = setInterval(() => {
+      if (pendingClicksRef.current > 0) {
+        syncClicks();
+      }
+    }, 1500);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden' && pendingClicksRef.current > 0) {
+        syncClicks();
+      }
+    };
+
+    const handleUnload = () => {
+      if (pendingClicksRef.current > 0) {
+        syncClicks();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('beforeunload', handleUnload);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('beforeunload', handleUnload);
+      if (pendingClicksRef.current > 0) {
+        syncClicks();
+      }
+    };
+  }, []);
 
   const handlePointerDown = (e) => {
     if (user.energy < 1) return;
@@ -54,41 +119,23 @@ const Terminal = () => {
     });
     
     pendingClicksRef.current += 1;
+    localStorage.setItem('pending_clicks', pendingClicksRef.current.toString());
 
+    // Debounce sync when user stops tapping
     if (syncTimeoutRef.current) {
       clearTimeout(syncTimeoutRef.current);
     }
     
     syncTimeoutRef.current = setTimeout(() => {
       syncClicks();
-    }, 1000);
+    }, 600);
   };
-
-  const syncClicks = async () => {
-    const clicksToSync = pendingClicksRef.current;
-    if (clicksToSync === 0) return;
-
-    pendingClicksRef.current = 0;
-
-    try {
-      await UserService.click(clicksToSync);
-    } catch (err) {
-      console.error('Failed to sync clicks', err);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-        if (pendingClicksRef.current > 0) {
-           UserService.click(pendingClicksRef.current).catch(() => {});
-        }
-      }
-    };
-  }, []);
 
   const handleBuy = async (id) => {
+    // Flush pending clicks so server has up-to-date balance
+    if (pendingClicksRef.current > 0) {
+      await syncClicks();
+    }
     try {
       await ShopService.buyItem(id);
       await fetchProfile();
@@ -99,6 +146,9 @@ const Terminal = () => {
   };
 
   const handleSell = async (id) => {
+    if (pendingClicksRef.current > 0) {
+      await syncClicks();
+    }
     try {
       await ShopService.sellItem(id);
       await fetchProfile();
