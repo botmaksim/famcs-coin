@@ -71,7 +71,19 @@ const Leaderboard = () => {
                  (user.custom_name || user.username || 'U').charAt(0).toUpperCase()
               )}
             </div>
-            <img src={getMedal(rank-1)} className={`absolute ${medalSize[rank]} left-1/2 -translate-x-1/2 rounded-full shadow-lg drop-shadow-md z-20 object-cover`} alt={`Rank ${rank}`} />
+            <img 
+              src={getMedal(rank-1)} 
+              className={`absolute ${medalSize[rank]} left-1/2 -translate-x-1/2 rounded-full shadow-lg drop-shadow-md z-20 object-contain`} 
+              alt=""
+              onError={(e) => {
+                const fallback = `/medal_${rank === 1 ? 'gold' : rank === 2 ? 'silver' : 'bronze'}.jpg`;
+                if (e.target.src !== fallback) {
+                  e.target.src = fallback;
+                } else {
+                  e.target.style.display = 'none';
+                }
+              }}
+            />
           </div>
           <div className="font-bold text-xs mt-2 text-slate-800 dark:text-white text-center w-full truncate px-1">
             {user.custom_name || user.username}

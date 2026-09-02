@@ -27,7 +27,12 @@ const WebNavbar = () => {
   return (
     <nav className="flex justify-between items-center px-10 py-5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-[1000] shadow-sm transition-colors">
       <div className="flex items-center gap-5">
-        <img src="/famcscoin.png" alt="logo" className="w-8 h-8 rounded-full" />
+        <img 
+          src="/famcscoin.png" 
+          alt="" 
+          className="w-8 h-8 rounded-full object-contain" 
+          onError={(e) => { e.target.src = '/famcscoin.jpg'; }}
+        />
         <Link to="/" className="text-xl font-black text-slate-800 dark:text-white no-underline tracking-wide hover:opacity-80 transition-opacity">FAMCS</Link>
       </div>
       <div className="flex gap-7">
