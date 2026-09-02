@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
 import { UserService } from '../../api/services/UserService';
+import { Shield } from 'lucide-react';
 
 const Profile = () => {
   const { user, fetchProfile } = useUser();
+  const navigate = useNavigate();
   const [displayName, setDisplayName] = useState(user?.display_name || "");
   const [isHidden, setIsHidden] = useState(user?.is_hidden || false);
   const [loading, setLoading] = useState(false);
@@ -47,6 +50,16 @@ const Profile = () => {
           Роль: {user?.role}
         </div>
       </div>
+
+      {(user?.role === 'admin' || user?.role === 'superadmin') && (
+        <button
+          onClick={() => navigate('/app/admin')}
+          className="mb-6 w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold rounded-2xl shadow-lg flex items-center justify-center gap-2 text-base active:scale-98 transition cursor-pointer"
+        >
+          <Shield size={20} />
+          Панель администратора
+        </button>
+      )}
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700">
         <h3 className="font-bold text-lg mb-4 text-slate-800 dark:text-slate-100">Настройки приватности</h3>

@@ -23,7 +23,16 @@ const TmaHeader = () => {
         <div>
           <div className="font-bold text-sm text-[var(--text-color)]">{user?.custom_name || user?.username || 'Студент'}</div>
           {(user?.role === 'admin' || user?.role === 'superadmin') && (
-            <div className="text-xs text-orange-400 font-medium">Администратор</div>
+            <div 
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate('/app/admin');
+              }}
+              className="text-[11px] text-orange-500 dark:text-orange-400 font-bold bg-orange-100 dark:bg-orange-500/20 px-2 py-0.5 rounded-full inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition mt-0.5"
+              title="Открыть панель управления"
+            >
+              Администратор
+            </div>
           )}
         </div>
       </div>
