@@ -78,6 +78,8 @@ func SetupRouter(pool *pgxpool.Pool, botToken string) http.Handler {
 	adminMux.Handle("POST /api/admin/news", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(newsHandler.CreateNews)))
 	adminMux.Handle("PUT /api/admin/news", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(newsHandler.UpdateNews)))
 	adminMux.Handle("POST /api/admin/news/update", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(newsHandler.UpdateNews)))
+	adminMux.Handle("POST /api/admin/news/close", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(newsHandler.ClosePoll)))
+	adminMux.Handle("POST /api/admin/news/header", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(newsHandler.UpdateNewsHeader)))
 	adminMux.Handle("DELETE /api/admin/news", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(newsHandler.DeleteNews)))
 
 	// Mount TMA routes to main mux
@@ -99,6 +101,7 @@ func SetupRouter(pool *pgxpool.Pool, botToken string) http.Handler {
 	optionalAuth := middleware.OptionalAuthMiddleware(botToken)
 	mux.Handle("GET /api/news", optionalAuth(http.HandlerFunc(newsHandler.GetNews)))
 	mux.Handle("POST /api/news/vote", optionalAuth(http.HandlerFunc(newsHandler.VoteNews)))
+	mux.Handle("GET /api/news/header", optionalAuth(http.HandlerFunc(newsHandler.GetNewsHeader)))
 
 	return middleware.LoggerMiddleware(middleware.CORSMiddleware(mux))
 }

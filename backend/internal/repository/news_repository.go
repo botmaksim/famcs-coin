@@ -11,10 +11,13 @@ import (
 
 type NewsRepository interface {
 	GetNews(ctx context.Context, voterID string) ([]models.NewsItem, error)
-	CreateNews(ctx context.Context, title, content string, imageURL *string) (*models.NewsItem, error)
-	UpdateNews(ctx context.Context, id int, title, content string, imageURL *string) (*models.NewsItem, error)
+	CreateNews(ctx context.Context, title, content string, imageURL *string, status string) (*models.NewsItem, error)
+	UpdateNews(ctx context.Context, id int, title, content string, imageURL *string, status string, verdict, verdictNote *string) (*models.NewsItem, error)
+	ClosePoll(ctx context.Context, id int, status string, verdict, verdictNote *string) (*models.NewsItem, error)
 	DeleteNews(ctx context.Context, id int) error
 	VoteNews(ctx context.Context, newsID int, voterID, voteType string) (likes int, dislikes int, userVote *string, err error)
+	GetNewsHeader(ctx context.Context) (*models.NewsHeaderContent, error)
+	UpdateNewsHeader(ctx context.Context, title, subtitle, banner string) error
 }
 
 type newsRepository struct {
@@ -27,7 +30,8 @@ func NewNewsRepository(db db.PgxPoolIface) NewsRepository {
 
 func (r *newsRepository) GetNews(ctx context.Context, voterID string) ([]models.NewsItem, error) {
 	query := `
-		SELECT n.id, n.title, n.content, n.image_url, n.likes_count, n.dislikes_count, n.created_at,
+		SELECT n.id, n.title, n.content, n.image_url, COALESCE(n.status, 'open'), n.verdict, n.verdict_note,
+		       n.likes_count, n.dislikes_count, n.created_at,
 		       v.vote_type
 		FROM news n
 		LEFT JOIN news_votes v ON n.id = v.news_id AND v.voter_id = $1
@@ -48,6 +52,9 @@ func (r *newsRepository) GetNews(ctx context.Context, voterID string) ([]models.
 			&item.Title,
 			&item.Content,
 			&item.ImageURL,
+			&item.Status,
+			&item.Verdict,
+			&item.VerdictNote,
 			&item.LikesCount,
 			&item.DislikesCount,
 			&item.CreatedAt,
@@ -61,18 +68,24 @@ func (r *newsRepository) GetNews(ctx context.Context, voterID string) ([]models.
 	return items, nil
 }
 
-func (r *newsRepository) CreateNews(ctx context.Context, title, content string, imageURL *string) (*models.NewsItem, error) {
+func (r *newsRepository) CreateNews(ctx context.Context, title, content string, imageURL *string, status string) (*models.NewsItem, error) {
+	if status == "" {
+		status = "open"
+	}
 	query := `
-		INSERT INTO news (title, content, image_url)
-		VALUES ($1, $2, $3)
-		RETURNING id, title, content, image_url, likes_count, dislikes_count, created_at
+		INSERT INTO news (title, content, image_url, status)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, title, content, image_url, status, verdict, verdict_note, likes_count, dislikes_count, created_at
 	`
 	var item models.NewsItem
-	err := r.db.QueryRow(ctx, query, title, content, imageURL).Scan(
+	err := r.db.QueryRow(ctx, query, title, content, imageURL, status).Scan(
 		&item.ID,
 		&item.Title,
 		&item.Content,
 		&item.ImageURL,
+		&item.Status,
+		&item.Verdict,
+		&item.VerdictNote,
 		&item.LikesCount,
 		&item.DislikesCount,
 		&item.CreatedAt,
@@ -83,19 +96,54 @@ func (r *newsRepository) CreateNews(ctx context.Context, title, content string, 
 	return &item, nil
 }
 
-func (r *newsRepository) UpdateNews(ctx context.Context, id int, title, content string, imageURL *string) (*models.NewsItem, error) {
+func (r *newsRepository) UpdateNews(ctx context.Context, id int, title, content string, imageURL *string, status string, verdict, verdictNote *string) (*models.NewsItem, error) {
+	if status == "" {
+		status = "open"
+	}
 	query := `
 		UPDATE news
-		SET title = $1, content = $2, image_url = $3
-		WHERE id = $4
-		RETURNING id, title, content, image_url, likes_count, dislikes_count, created_at
+		SET title = $1, content = $2, image_url = $3, status = $4, verdict = $5, verdict_note = $6
+		WHERE id = $7
+		RETURNING id, title, content, image_url, status, verdict, verdict_note, likes_count, dislikes_count, created_at
 	`
 	var item models.NewsItem
-	err := r.db.QueryRow(ctx, query, title, content, imageURL, id).Scan(
+	err := r.db.QueryRow(ctx, query, title, content, imageURL, status, verdict, verdictNote, id).Scan(
 		&item.ID,
 		&item.Title,
 		&item.Content,
 		&item.ImageURL,
+		&item.Status,
+		&item.Verdict,
+		&item.VerdictNote,
+		&item.LikesCount,
+		&item.DislikesCount,
+		&item.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func (r *newsRepository) ClosePoll(ctx context.Context, id int, status string, verdict, verdictNote *string) (*models.NewsItem, error) {
+	if status == "" {
+		status = "closed"
+	}
+	query := `
+		UPDATE news
+		SET status = $1, verdict = $2, verdict_note = $3
+		WHERE id = $4
+		RETURNING id, title, content, image_url, status, verdict, verdict_note, likes_count, dislikes_count, created_at
+	`
+	var item models.NewsItem
+	err := r.db.QueryRow(ctx, query, status, verdict, verdictNote, id).Scan(
+		&item.ID,
+		&item.Title,
+		&item.Content,
+		&item.ImageURL,
+		&item.Status,
+		&item.Verdict,
+		&item.VerdictNote,
 		&item.LikesCount,
 		&item.DislikesCount,
 		&item.CreatedAt,
@@ -121,6 +169,16 @@ func (r *newsRepository) VoteNews(ctx context.Context, newsID int, voterID, vote
 		return 0, 0, nil, err
 	}
 	defer tx.Rollback(ctx)
+
+	// Check if poll is active
+	var status string
+	err = tx.QueryRow(ctx, `SELECT COALESCE(status, 'open') FROM news WHERE id = $1`, newsID).Scan(&status)
+	if err != nil {
+		return 0, 0, nil, errors.New("новость не найдена")
+	}
+	if status != "open" {
+		return 0, 0, nil, errors.New("голосование по этой теме уже завершено")
+	}
 
 	var existingVote string
 	err = tx.QueryRow(ctx, `SELECT vote_type FROM news_votes WHERE news_id = $1 AND voter_id = $2`, newsID, voterID).Scan(&existingVote)
@@ -189,4 +247,57 @@ func (r *newsRepository) VoteNews(ctx context.Context, newsID int, voterID, vote
 	}
 
 	return likes, dislikes, finalUserVote, nil
+}
+
+func (r *newsRepository) GetNewsHeader(ctx context.Context) (*models.NewsHeaderContent, error) {
+	header := &models.NewsHeaderContent{
+		Title:    "Новости и Идеи Развития",
+		Subtitle: "Узнавайте первыми о новых фичах факультетской игры и голосуйте за идеи, которые хотите увидеть в следующем релизе!",
+		Banner:   "",
+	}
+
+	rows, err := r.db.Query(ctx, `SELECT key, value FROM site_content WHERE key IN ('news_header_title', 'news_header_subtitle', 'news_banner_markdown')`)
+	if err != nil {
+		return header, nil // fallback to defaults on error
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var key, val string
+		if err := rows.Scan(&key, &val); err == nil {
+			switch key {
+			case "news_header_title":
+				if val != "" {
+					header.Title = val
+				}
+			case "news_header_subtitle":
+				header.Subtitle = val
+			case "news_banner_markdown":
+				header.Banner = val
+			}
+		}
+	}
+	return header, nil
+}
+
+func (r *newsRepository) UpdateNewsHeader(ctx context.Context, title, subtitle, banner string) error {
+	queries := []struct {
+		key, val string
+	}{
+		{"news_header_title", title},
+		{"news_header_subtitle", subtitle},
+		{"news_banner_markdown", banner},
+	}
+
+	for _, q := range queries {
+		_, err := r.db.Exec(ctx, `
+			INSERT INTO site_content (key, value, updated_at)
+			VALUES ($1, $2, CURRENT_TIMESTAMP)
+			ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP
+		`, q.key, q.val)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

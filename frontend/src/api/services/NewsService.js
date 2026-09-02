@@ -24,5 +24,8 @@ export const NewsService = {
   },
   createNews: (data) => apiClient.post('/admin/news', data),
   updateNews: (data) => apiClient.put('/admin/news', data),
+  closePoll: (data) => apiClient.post('/admin/news/close', data),
   deleteNews: (id) => apiClient.delete(`/admin/news?id=${id}`),
+  getNewsHeader: () => apiClient.get('/news/header'),
+  updateNewsHeader: (data) => apiClient.post('/admin/news/header', data),
 };

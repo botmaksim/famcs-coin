@@ -6,7 +6,7 @@ import { BetsService } from '../../api/services/BetsService';
 import { ShopService } from '../../api/services/ShopService';
 import { FeedbackService } from '../../api/services/FeedbackService';
 import { NewsService } from '../../api/services/NewsService';
-import { ArrowLeft, Plus, Trash2, CheckCircle, Shield, AlertCircle, MessageSquare, Search, Check, X, Clock, RefreshCw, Newspaper, ThumbsUp, ThumbsDown, Edit3, XCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, CheckCircle, Shield, AlertCircle, MessageSquare, Search, Check, X, Clock, RefreshCw, Newspaper, ThumbsUp, ThumbsDown, Edit3, XCircle, FileText } from 'lucide-react';
 
 const TmaAdmin = () => {
   const { user } = useUser();
@@ -21,7 +21,16 @@ const TmaAdmin = () => {
   const [newsTitle, setNewsTitle] = useState('');
   const [newsContent, setNewsContent] = useState('');
   const [newsImage, setNewsImage] = useState('');
+  const [newsStatus, setNewsStatus] = useState('open');
+  const [newsVerdict, setNewsVerdict] = useState('');
+  const [newsVerdictNote, setNewsVerdictNote] = useState('');
   const [editingNewsId, setEditingNewsId] = useState(null);
+
+  // News Header & Rich Text State
+  const [headerTitle, setHeaderTitle] = useState('Новости и Идеи Развития');
+  const [headerSubtitle, setHeaderSubtitle] = useState('Узнавайте первыми о новых фичах факультетской игры и голосуйте за идеи!');
+  const [headerBanner, setHeaderBanner] = useState('');
+  const [showBannerConfig, setShowBannerConfig] = useState(false);
 
   // Bets State
   const [bets, setBets] = useState([]);
@@ -50,16 +59,22 @@ const TmaAdmin = () => {
 
   const loadData = async () => {
     try {
-      const [betsRes, shopRes, feedbackRes, newsRes] = await Promise.all([
+      const [betsRes, shopRes, feedbackRes, newsRes, headerRes] = await Promise.all([
         BetsService.getActiveBets(),
         ShopService.getItems(),
         FeedbackService.getFeedback().catch(() => ({ data: [] })),
-        NewsService.getNews().catch(() => ({ data: [] }))
+        NewsService.getNews().catch(() => ({ data: [] })),
+        NewsService.getNewsHeader().catch(() => null)
       ]);
       setBets(betsRes.data || []);
       setShopItems(shopRes.data || []);
       setFeedbacks(feedbackRes.data || []);
       setAdminNews(newsRes.data || []);
+      if (headerRes?.data) {
+        setHeaderTitle(headerRes.data.title || 'Новости и Идеи Развития');
+        setHeaderSubtitle(headerRes.data.subtitle || '');
+        setHeaderBanner(headerRes.data.banner || '');
+      }
     } catch (err) {
       console.error('Failed to load admin data', err);
     }
@@ -70,6 +85,9 @@ const TmaAdmin = () => {
     setNewsTitle(item.title);
     setNewsContent(item.content);
     setNewsImage(item.image_url || '');
+    setNewsStatus(item.status || 'open');
+    setNewsVerdict(item.verdict || '');
+    setNewsVerdictNote(item.verdict_note || '');
   };
 
   const handleCancelEditNews = () => {
@@ -77,6 +95,9 @@ const TmaAdmin = () => {
     setNewsTitle('');
     setNewsContent('');
     setNewsImage('');
+    setNewsStatus('open');
+    setNewsVerdict('');
+    setNewsVerdictNote('');
   };
 
   const handleSaveNews = async (e) => {
@@ -92,25 +113,63 @@ const TmaAdmin = () => {
           id: editingNewsId,
           title: newsTitle.trim(),
           content: newsContent.trim(),
-          image_url: newsImage.trim() || null
+          image_url: newsImage.trim() || null,
+          status: newsStatus,
+          verdict: newsVerdict.trim() || null,
+          verdict_note: newsVerdictNote.trim() || null
         });
         showNotification('Новость успешно обновлена!');
       } else {
         await NewsService.createNews({
           title: newsTitle.trim(),
           content: newsContent.trim(),
-          image_url: newsImage.trim() || null
+          image_url: newsImage.trim() || null,
+          status: newsStatus
         });
         showNotification('Новость успешно опубликована!');
       }
-      setEditingNewsId(null);
-      setNewsTitle('');
-      setNewsContent('');
-      setNewsImage('');
+      handleCancelEditNews();
       const res = await NewsService.getNews();
       setAdminNews(res.data || []);
     } catch (err) {
       showNotification(err.response?.data || 'Ошибка при сохранении новости', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickStatusChange = async (id, status, verdict = null, verdictNote = null) => {
+    setLoading(true);
+    try {
+      await NewsService.closePoll({
+        id,
+        status,
+        verdict,
+        verdict_note: verdictNote
+      });
+      showNotification('Статус опроса обновлен!');
+      const res = await NewsService.getNews();
+      setAdminNews(res.data || []);
+    } catch (err) {
+      showNotification(err.response?.data || 'Ошибка обновления статуса', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveHeaderSettings = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await NewsService.updateNewsHeader({
+        title: headerTitle.trim(),
+        subtitle: headerSubtitle.trim(),
+        banner: headerBanner.trim()
+      });
+      showNotification('Вступительный текст и баннер сохранены!');
+      setShowBannerConfig(false);
+    } catch (err) {
+      showNotification('Ошибка сохранения текста', 'error');
     } finally {
       setLoading(false);
     }
@@ -802,6 +861,63 @@ const TmaAdmin = () => {
       {/* === NEWS & DEVELOPMENT IDEAS TAB === */}
       {activeTab === 'news' && (
         <div className="flex flex-col gap-6">
+          {/* Header & Banner Settings Accordion */}
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/80 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setShowBannerConfig(!showBannerConfig)}
+              className="w-full flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-200"
+            >
+              <span className="flex items-center gap-2">
+                <FileText size={16} className="text-orange-500" />
+                Вступительный текст и баннер страницы
+              </span>
+              <span className="text-orange-500">{showBannerConfig ? 'Скрыть' : 'Настроить'}</span>
+            </button>
+
+            {showBannerConfig && (
+              <form onSubmit={handleSaveHeaderSettings} className="flex flex-col gap-3 mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Главный заголовок</label>
+                  <input
+                    type="text"
+                    value={headerTitle}
+                    onChange={(e) => setHeaderTitle(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white font-bold"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Подзаголовок</label>
+                  <input
+                    type="text"
+                    value={headerSubtitle}
+                    onChange={(e) => setHeaderSubtitle(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Текст баннера / Объявление (опционально)</label>
+                  <textarea
+                    value={headerBanner}
+                    onChange={(e) => setHeaderBanner(e.target.value)}
+                    placeholder="Например: Итоги опроса подводим в пятницу!"
+                    rows={2}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white resize-none"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl text-xs transition shadow-sm disabled:opacity-50"
+                >
+                  Сохранить вступительный текст
+                </button>
+              </form>
+            )}
+          </div>
+
           {/* Create / Edit News Form */}
           <div className={`bg-white dark:bg-slate-800 p-5 rounded-2xl border transition-all shadow-sm ${
             editingNewsId ? 'border-2 border-orange-500 ring-4 ring-orange-500/10' : 'border-slate-100 dark:border-slate-700/80'
@@ -809,7 +925,7 @@ const TmaAdmin = () => {
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2">
                 {editingNewsId ? <Edit3 size={16} className="text-orange-500" /> : <Plus size={16} className="text-orange-500" />}
-                {editingNewsId ? `Редактирование новости #${editingNewsId}` : 'Опубликовать новость / идею развития'}
+                {editingNewsId ? `Редактирование новости #${editingNewsId}` : 'Опубликовать новость / опрос'}
               </h3>
               {editingNewsId && (
                 <button
@@ -859,6 +975,46 @@ const TmaAdmin = () => {
                 />
               </div>
 
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block mb-1">Статус голосования</label>
+                <select
+                  value={newsStatus}
+                  onChange={(e) => setNewsStatus(e.target.value)}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white"
+                >
+                  <option value="open">Открытое голосование</option>
+                  <option value="in_progress">В разработке (принято)</option>
+                  <option value="implemented">Реализовано (в игре)</option>
+                  <option value="rejected">Отклонено</option>
+                  <option value="closed">Голосование закрыто</option>
+                </select>
+              </div>
+
+              {newsStatus !== 'open' && (
+                <div className="flex flex-col gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl">
+                  <div>
+                    <label className="text-[11px] font-bold text-amber-700 dark:text-amber-400 block mb-1">Краткий вердикт</label>
+                    <input
+                      type="text"
+                      value={newsVerdict}
+                      onChange={(e) => setNewsVerdict(e.target.value)}
+                      placeholder="Принято в спринт #2"
+                      className="w-full p-2 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg text-xs outline-none text-slate-800 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-amber-700 dark:text-amber-400 block mb-1">Комментарий администрации</label>
+                    <textarea
+                      value={newsVerdictNote}
+                      onChange={(e) => setNewsVerdictNote(e.target.value)}
+                      placeholder="Подробности реализации или причина закрытия..."
+                      rows={2}
+                      className="w-full p-2 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg text-xs outline-none text-slate-800 dark:text-white resize-none"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center gap-2 mt-1">
                 <button
                   type="submit"
@@ -883,7 +1039,7 @@ const TmaAdmin = () => {
           {/* List of News */}
           <div className="flex flex-col gap-3">
             <h4 className="font-bold text-xs text-slate-400 uppercase tracking-wider px-1">
-              Опубликованные новости ({adminNews.length})
+              Опубликованные новости и опросы ({adminNews.length})
             </h4>
 
             {adminNews.map((item) => (
@@ -891,10 +1047,25 @@ const TmaAdmin = () => {
                 key={item.id}
                 className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/80 shadow-sm flex flex-col gap-2.5"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400 font-semibold">
-                    {new Date(item.created_at).toLocaleDateString('ru-RU')}
-                  </span>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-slate-400 font-semibold">
+                      {new Date(item.created_at).toLocaleDateString('ru-RU')}
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      item.status === 'in_progress' ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-500 border-blue-200/50' :
+                      item.status === 'implemented' ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500 border-emerald-200/50' :
+                      item.status === 'rejected' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-500 border-rose-200/50' :
+                      item.status === 'closed' ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700' :
+                      'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500 border-emerald-200/50'
+                    }`}>
+                      {item.status === 'in_progress' ? 'В разработке' :
+                       item.status === 'implemented' ? 'Реализовано' :
+                       item.status === 'rejected' ? 'Отклонено' :
+                       item.status === 'closed' ? 'Завершено' : 'Открыто'}
+                    </span>
+                  </div>
+
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleStartEditNews(item)}
@@ -909,7 +1080,7 @@ const TmaAdmin = () => {
                       onClick={() => handleDeleteNews(item.id)}
                       disabled={loading}
                       className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition"
-                      title="Удалить новость"
+                      title="Удалить опрос"
                     >
                       <Trash2 size={15} />
                     </button>
@@ -920,18 +1091,45 @@ const TmaAdmin = () => {
                   {item.title}
                 </div>
 
-                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
                   {item.content}
                 </p>
 
-                <div className="flex items-center gap-3 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-xs">
-                  <div className="flex items-center gap-1 text-emerald-600 font-bold">
-                    <ThumbsUp size={13} />
-                    <span>{item.likes_count}</span>
+                {item.verdict && (
+                  <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-lg border border-amber-200/50">
+                    <span className="font-bold">Итог: </span>{item.verdict}
                   </div>
-                  <div className="flex items-center gap-1 text-rose-600 font-bold">
-                    <ThumbsDown size={13} />
-                    <span>{item.dislikes_count}</span>
+                )}
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/60 text-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1 text-emerald-600 font-bold">
+                      <ThumbsUp size={13} />
+                      <span>{item.likes_count}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-rose-600 font-bold">
+                      <ThumbsDown size={13} />
+                      <span>{item.dislikes_count}</span>
+                    </div>
+                  </div>
+
+                  {/* Quick status actions */}
+                  <div className="flex items-center gap-1 text-[10px]">
+                    {item.status === 'open' ? (
+                      <button
+                        onClick={() => handleQuickStatusChange(item.id, 'closed', 'Голосование завершено')}
+                        className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-200"
+                      >
+                        Закрыть опрос
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleQuickStatusChange(item.id, 'open', null, null)}
+                        className="px-2 py-1 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 font-semibold hover:bg-emerald-100"
+                      >
+                        Открыть заново
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

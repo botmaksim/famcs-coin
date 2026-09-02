@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FeedbackService } from '../../api/services/FeedbackService';
 import { NewsService } from '../../api/services/NewsService';
-import { ThumbsUp, ThumbsDown, Sparkles, Calendar, CheckCircle, Send } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Sparkles, Calendar, CheckCircle, Send, Lock, Shield, Clock, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Feedback = () => {
@@ -173,15 +173,37 @@ const Feedback = () => {
             {news.map((item) => {
               const totalVotes = item.likes_count + item.dislikes_count;
               const likePercent = totalVotes > 0 ? Math.round((item.likes_count / totalVotes) * 100) : 50;
+              const isClosed = item.status && item.status !== 'open';
+
+              const renderStatusBadge = (status) => {
+                switch (status) {
+                  case 'in_progress':
+                    return <span className="text-[10px] font-bold text-blue-500 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-full border border-blue-200/50 flex items-center gap-1"><Clock size={10} /> В разработке</span>;
+                  case 'implemented':
+                    return <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200/50 flex items-center gap-1"><CheckCircle size={10} /> Реализовано</span>;
+                  case 'rejected':
+                    return <span className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-full border border-rose-200/50 flex items-center gap-1"><XCircle size={10} /> Отклонено</span>;
+                  case 'closed':
+                    return <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full flex items-center gap-1"><Lock size={10} /> Завершено</span>;
+                  case 'open':
+                  default:
+                    return <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200/50 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Открыто</span>;
+                }
+              };
 
               return (
                 <div
                   key={item.id}
-                  className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700/80 shadow-sm flex flex-col gap-3"
+                  className={`bg-white dark:bg-slate-800 rounded-2xl p-4 border shadow-sm flex flex-col gap-3 ${
+                    isClosed ? 'border-slate-200 dark:border-slate-700/60' : 'border-slate-100 dark:border-slate-700/80'
+                  }`}
                 >
-                  <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-semibold">
-                    <Calendar size={12} className="text-orange-500" />
-                    <span>{new Date(item.created_at).toLocaleDateString('ru-RU')}</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-semibold">
+                      <Calendar size={12} className="text-orange-500" />
+                      <span>{new Date(item.created_at).toLocaleDateString('ru-RU')}</span>
+                    </div>
+                    {renderStatusBadge(item.status)}
                   </div>
 
                   <h4 className="font-bold text-base text-slate-800 dark:text-white leading-snug">
@@ -203,16 +225,33 @@ const Feedback = () => {
                     {item.content}
                   </p>
 
+                  {/* Admin Verdict and Note */}
+                  {(item.verdict || item.verdict_note) && (
+                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs">
+                      <div className="font-bold text-amber-600 dark:text-amber-400 mb-0.5 flex items-center gap-1.5">
+                        <Shield size={13} />
+                        <span>Решение: {item.verdict || 'Голосование завершено'}</span>
+                      </div>
+                      {item.verdict_note && (
+                        <p className="text-slate-700 dark:text-slate-200 leading-relaxed m-0 font-medium text-[11px]">
+                          {item.verdict_note}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Voting Bar */}
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {/* Like */}
                       <button
-                        onClick={() => handleVote(item.id, 'like')}
-                        disabled={votingId === item.id}
+                        onClick={() => !isClosed && handleVote(item.id, 'like')}
+                        disabled={votingId === item.id || isClosed}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition border ${
                           item.user_vote === 'like'
                             ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm'
+                            : isClosed
+                            ? 'bg-slate-100 dark:bg-slate-900/40 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed opacity-80'
                             : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
                         }`}
                       >
@@ -222,17 +261,26 @@ const Feedback = () => {
 
                       {/* Dislike */}
                       <button
-                        onClick={() => handleVote(item.id, 'dislike')}
-                        disabled={votingId === item.id}
+                        onClick={() => !isClosed && handleVote(item.id, 'dislike')}
+                        disabled={votingId === item.id || isClosed}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition border ${
                           item.user_vote === 'dislike'
                             ? 'bg-rose-500 text-white border-rose-600 shadow-sm'
+                            : isClosed
+                            ? 'bg-slate-100 dark:bg-slate-900/40 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed opacity-80'
                             : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/30'
                         }`}
                       >
                         <ThumbsDown size={13} className={item.user_vote === 'dislike' ? 'fill-white' : ''} />
                         <span>{item.dislikes_count}</span>
                       </button>
+
+                      {isClosed && (
+                        <span className="text-[11px] text-slate-400 flex items-center gap-1 font-medium ml-1">
+                          <Lock size={11} />
+                          Опрос закрыт
+                        </span>
+                      )}
                     </div>
 
                     {totalVotes > 0 && (

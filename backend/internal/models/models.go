@@ -98,8 +98,17 @@ type NewsItem struct {
 	Title         string    `json:"title"`
 	Content       string    `json:"content"`
 	ImageURL      *string   `json:"image_url,omitempty"`
+	Status        string    `json:"status"` // 'open', 'closed', 'in_progress', 'implemented', 'rejected'
+	Verdict       *string   `json:"verdict,omitempty"`
+	VerdictNote   *string   `json:"verdict_note,omitempty"`
 	LikesCount    int       `json:"likes_count"`
 	DislikesCount int       `json:"dislikes_count"`
 	UserVote      *string   `json:"user_vote,omitempty"` // 'like', 'dislike', or nil
 	CreatedAt     time.Time `json:"created_at"`
+}
+
+type NewsHeaderContent struct {
+	Title    string `json:"title"`
+	Subtitle string `json:"subtitle"`
+	Banner   string `json:"banner"`
 }

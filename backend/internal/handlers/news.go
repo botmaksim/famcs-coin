@@ -84,6 +84,7 @@ func (h *NewsHandler) CreateNews(w http.ResponseWriter, r *http.Request) {
 		Title    string  `json:"title"`
 		Content  string  `json:"content"`
 		ImageURL *string `json:"image_url"`
+		Status   string  `json:"status"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid input", http.StatusBadRequest)
@@ -94,7 +95,7 @@ func (h *NewsHandler) CreateNews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := h.newsRepo.CreateNews(r.Context(), req.Title, req.Content, req.ImageURL)
+	item, err := h.newsRepo.CreateNews(r.Context(), req.Title, req.Content, req.ImageURL, req.Status)
 	if err != nil {
 		http.Error(w, "Failed to create news", http.StatusInternalServerError)
 		return
@@ -106,10 +107,13 @@ func (h *NewsHandler) CreateNews(w http.ResponseWriter, r *http.Request) {
 
 func (h *NewsHandler) UpdateNews(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		ID       int     `json:"id"`
-		Title    string  `json:"title"`
-		Content  string  `json:"content"`
-		ImageURL *string `json:"image_url"`
+		ID          int     `json:"id"`
+		Title       string  `json:"title"`
+		Content     string  `json:"content"`
+		ImageURL    *string `json:"image_url"`
+		Status      string  `json:"status"`
+		Verdict     *string `json:"verdict"`
+		VerdictNote *string `json:"verdict_note"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID <= 0 {
 		http.Error(w, "Invalid input or ID", http.StatusBadRequest)
@@ -120,9 +124,34 @@ func (h *NewsHandler) UpdateNews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := h.newsRepo.UpdateNews(r.Context(), req.ID, req.Title, req.Content, req.ImageURL)
+	item, err := h.newsRepo.UpdateNews(r.Context(), req.ID, req.Title, req.Content, req.ImageURL, req.Status, req.Verdict, req.VerdictNote)
 	if err != nil {
 		http.Error(w, "Failed to update news", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(item)
+}
+
+func (h *NewsHandler) ClosePoll(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ID          int     `json:"id"`
+		Status      string  `json:"status"` // 'closed', 'in_progress', 'implemented', 'rejected'
+		Verdict     *string `json:"verdict"`
+		VerdictNote *string `json:"verdict_note"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID <= 0 {
+		http.Error(w, "Invalid input or ID", http.StatusBadRequest)
+		return
+	}
+	if req.Status == "" {
+		req.Status = "closed"
+	}
+
+	item, err := h.newsRepo.ClosePoll(r.Context(), req.ID, req.Status, req.Verdict, req.VerdictNote)
+	if err != nil {
+		http.Error(w, "Failed to close poll", http.StatusInternalServerError)
 		return
 	}
 
@@ -147,6 +176,36 @@ func (h *NewsHandler) DeleteNews(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.newsRepo.DeleteNews(r.Context(), id); err != nil {
 		http.Error(w, "Failed to delete news", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+func (h *NewsHandler) GetNewsHeader(w http.ResponseWriter, r *http.Request) {
+	header, err := h.newsRepo.GetNewsHeader(r.Context())
+	if err != nil {
+		http.Error(w, "Failed to get header", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(header)
+}
+
+func (h *NewsHandler) UpdateNewsHeader(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Title    string `json:"title"`
+		Subtitle string `json:"subtitle"`
+		Banner   string `json:"banner"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.newsRepo.UpdateNewsHeader(r.Context(), req.Title, req.Subtitle, req.Banner); err != nil {
+		http.Error(w, "Failed to update header", http.StatusInternalServerError)
 		return
 	}
 
