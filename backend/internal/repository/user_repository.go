@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"famcscoin-backend/internal/db"
 	"famcscoin-backend/internal/models"
@@ -17,7 +18,7 @@ type UserRepository interface {
 	UpdateRole(ctx context.Context, id int64, role string) error
 	GetLeaderboard(ctx context.Context, limit int, sortBy string, period string) ([]models.User, error)
 	UpdateBalance(ctx context.Context, tx pgx.Tx, userID int64, amount float64, txType string) error
-	ProcessClick(ctx context.Context, userID int64, coins float64, energyCost int) error
+	ProcessClick(ctx context.Context, userID int64, coins float64, energyCost int) (float64, int, error)
 }
 
 type userRepository struct {
@@ -40,6 +41,39 @@ func (r *userRepository) GetUserByID(ctx context.Context, id int64) (*models.Use
 		}
 		return nil, err
 	}
+
+	// Offline energy recovery (3 energy/sec) and passive income
+	if u.LastActiveAt != nil && !u.LastActiveAt.IsZero() {
+		elapsed := time.Since(*u.LastActiveAt).Seconds()
+		if elapsed >= 1 {
+			energyRegen := int(elapsed * 3.0)
+			updated := false
+			if energyRegen > 0 && u.Energy < u.MaxEnergy {
+				u.Energy += energyRegen
+				if u.Energy > u.MaxEnergy {
+					u.Energy = u.MaxEnergy
+				}
+				updated = true
+			}
+			if u.PassiveIncome > 0 {
+				offlineSecs := elapsed
+				if offlineSecs > 3*3600 {
+					offlineSecs = 3 * 3600
+				}
+				incomeEarned := (offlineSecs / 3600.0) * u.PassiveIncome
+				if incomeEarned > 0 {
+					u.Balance += incomeEarned
+					updated = true
+				}
+			}
+			if updated {
+				now := time.Now()
+				u.LastActiveAt = &now
+				_, _ = r.db.Exec(ctx, `UPDATE users SET balance = $1, energy = $2, last_active_at = $3 WHERE tg_id = $4`, u.Balance, u.Energy, u.LastActiveAt, u.TgID)
+			}
+		}
+	}
+
 	return &u, nil
 }
 
@@ -126,39 +160,71 @@ func (r *userRepository) UpdateBalance(ctx context.Context, tx pgx.Tx, userID in
 	return err
 }
 
-func (r *userRepository) ProcessClick(ctx context.Context, userID int64, coins float64, energyCost int) error {
+func (r *userRepository) ProcessClick(ctx context.Context, userID int64, coins float64, energyCost int) (float64, int, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 	defer tx.Rollback(ctx)
 
-	// Lock the row for update to prevent concurrent click exploits
-	var currentEnergy int
-	err = tx.QueryRow(ctx, `SELECT energy FROM users WHERE tg_id = $1 FOR UPDATE`, userID).Scan(&currentEnergy)
+	var balance, passiveIncome float64
+	var currentEnergy, maxEnergy int
+	var lastActiveAt *time.Time
+
+	err = tx.QueryRow(ctx, `SELECT balance, energy, max_energy, passive_income, last_active_at FROM users WHERE tg_id = $1 FOR UPDATE`, userID).
+		Scan(&balance, &currentEnergy, &maxEnergy, &passiveIncome, &lastActiveAt)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 
-	if currentEnergy <= 0 {
-		return fmt.Errorf("insufficient energy")
+	// Calculate offline regeneration (3 energy per second)
+	if lastActiveAt != nil && !lastActiveAt.IsZero() {
+		elapsed := time.Since(*lastActiveAt).Seconds()
+		if elapsed >= 1 {
+			energyRegen := int(elapsed * 3.0)
+			if energyRegen > 0 {
+				currentEnergy += energyRegen
+				if currentEnergy > maxEnergy {
+					currentEnergy = maxEnergy
+				}
+			}
+			if passiveIncome > 0 {
+				offlineSecs := elapsed
+				if offlineSecs > 3*3600 {
+					offlineSecs = 3 * 3600
+				}
+				balance += (offlineSecs / 3600.0) * passiveIncome
+			}
+		}
 	}
 
 	actualClicks := energyCost
 	if currentEnergy < actualClicks {
 		actualClicks = currentEnergy
 	}
+	if actualClicks < 0 {
+		actualClicks = 0
+	}
+
 	actualCoins := float64(actualClicks)
+	balance += actualCoins
+	currentEnergy -= actualClicks
 
-	_, err = tx.Exec(ctx, `UPDATE users SET balance = balance + $1, energy = energy - $2, last_active_at = CURRENT_TIMESTAMP WHERE tg_id = $3`, actualCoins, actualClicks, userID)
+	_, err = tx.Exec(ctx, `UPDATE users SET balance = $1, energy = $2, last_active_at = CURRENT_TIMESTAMP WHERE tg_id = $3`, balance, currentEnergy, userID)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 
-	_, err = tx.Exec(ctx, `INSERT INTO transactions (user_id, amount, type) VALUES ($1, $2, 'click')`, userID, actualCoins)
-	if err != nil {
-		return err
+	if actualCoins > 0 {
+		_, err = tx.Exec(ctx, `INSERT INTO transactions (user_id, amount, type) VALUES ($1, $2, 'click')`, userID, actualCoins)
+		if err != nil {
+			return 0, 0, err
+		}
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return 0, 0, err
+	}
+
+	return balance, currentEnergy, nil
 }

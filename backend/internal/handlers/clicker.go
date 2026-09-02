@@ -36,20 +36,21 @@ func (h *ClickerHandler) Click(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Each click gives 1 coin and costs 1 energy (can be configured later)
+	// Each click gives 1 coin and costs 1 energy
 	coinsEarned := float64(req.Count)
 	energyCost := req.Count
 
-	err := h.userRepo.ProcessClick(r.Context(), tgID, coinsEarned, energyCost)
+	newBalance, newEnergy, err := h.userRepo.ProcessClick(r.Context(), tgID, coinsEarned, energyCost)
 	if err != nil {
-		if err.Error() == "insufficient energy" {
-			http.Error(w, "Insufficient energy", http.StatusBadRequest)
-			return
-		}
 		http.Error(w, "Failed to process click", http.StatusInternalServerError)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "ok",
+		"balance": newBalance,
+		"energy":  newEnergy,
+	})
 }

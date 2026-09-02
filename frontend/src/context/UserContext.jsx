@@ -28,6 +28,22 @@ export const UserProvider = ({ children }) => {
     fetchProfile();
   }, [fetchProfile]);
 
+  // Smooth real-time energy refill (+3 per second) up to max_energy
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (localUser) {
+        const max = localUser.max_energy || localUser.maxEnergy || 1000;
+        if (localUser.energy < max) {
+          updateLocalUser({
+            energy: Math.min(max, localUser.energy + 3),
+          });
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [localUser, updateLocalUser]);
+
   const user = localUser || {
     balance: 0,
     energy: 1000,

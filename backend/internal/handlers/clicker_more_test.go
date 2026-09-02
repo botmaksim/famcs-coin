@@ -50,22 +50,11 @@ func TestClickerHandler_Click_Errors(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("insufficient energy", func(t *testing.T) {
-		req := httptest.NewRequest("POST", "/click", bytes.NewBuffer([]byte(`{"count": 10}`)))
-		ctx := context.WithValue(req.Context(), "tg_id", int64(123))
-		req = req.WithContext(ctx)
-		mockRepo.On("ProcessClick", mock.Anything, int64(123), float64(10), 10).Return(errors.New("insufficient energy")).Once()
-		w := httptest.NewRecorder()
-		handler.Click(w, req)
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		mockRepo.AssertExpectations(t)
-	})
-
 	t.Run("repo error", func(t *testing.T) {
 		req := httptest.NewRequest("POST", "/click", bytes.NewBuffer([]byte(`{"count": 10}`)))
 		ctx := context.WithValue(req.Context(), "tg_id", int64(123))
 		req = req.WithContext(ctx)
-		mockRepo.On("ProcessClick", mock.Anything, int64(123), float64(10), 10).Return(errors.New("db error")).Once()
+		mockRepo.On("ProcessClick", mock.Anything, int64(123), float64(10), 10).Return(0.0, 0, errors.New("db error")).Once()
 		w := httptest.NewRecorder()
 		handler.Click(w, req)
 		assert.Equal(t, http.StatusInternalServerError, w.Code)

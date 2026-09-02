@@ -42,17 +42,26 @@ const Terminal = () => {
 
     isSyncingRef.current = true;
     try {
-      await UserService.click(count);
-      await fetchProfile();
+      const res = await UserService.click(count);
+      if (res.data && res.data.balance !== undefined) {
+        // Reconcile: server balance + any in-flight clicks made while request was in-flight
+        const inFlight = pendingClicksRef.current;
+        updateLocalUser({
+          balance: res.data.balance + inFlight,
+          energy: Math.max(0, res.data.energy - inFlight),
+        });
+      }
     } catch (err) {
       console.error('Failed to sync clicks', err);
-      // Restore clicks if sync failed
-      pendingClicksRef.current += count;
-      localStorage.setItem('pending_clicks', pendingClicksRef.current.toString());
+      // Only restore clicks on server/network errors
+      if (!err.response || err.response.status >= 500) {
+        pendingClicksRef.current += count;
+        localStorage.setItem('pending_clicks', pendingClicksRef.current.toString());
+      }
     } finally {
       isSyncingRef.current = false;
       if (pendingClicksRef.current > 0) {
-        setTimeout(syncClicks, 500);
+        setTimeout(syncClicks, 300);
       }
     }
   };
@@ -179,12 +188,12 @@ const Terminal = () => {
       {/* Energy Bar area */}
       <div className="text-center mb-8 tour-energy">
         <div className="text-sm font-bold mb-1 flex justify-center items-center text-orange-500">
-          {user.energy} / {user.maxEnergy || 1000}
+          {user.energy} / {user.max_energy || user.maxEnergy || 1000}
         </div>
         <div className="w-full h-3 bg-slate-200 dark:bg-slate-800/50 rounded-full overflow-hidden shadow-inner border border-white/20 dark:border-slate-800">
           <div 
             className="h-full bg-gradient-to-r from-orange-500 to-orange-400 transition-all duration-100 ease-out"
-            style={{ width: `${Math.min(100, (user.energy / (user.maxEnergy || 1000)) * 100)}%` }}
+            style={{ width: `${Math.min(100, (user.energy / (user.max_energy || user.maxEnergy || 1000)) * 100)}%` }}
           ></div>
         </div>
       </div>

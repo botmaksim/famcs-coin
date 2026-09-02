@@ -51,7 +51,7 @@ func TestUserRepository_ProcessClick_Errors(t *testing.T) {
 		defer mock.Close()
 		repo := NewUserRepository(mock)
 		mock.ExpectBegin().WillReturnError(errors.New("begin err"))
-		err := repo.ProcessClick(context.Background(), 1, 1.0, 1)
+		_, _, err := repo.ProcessClick(context.Background(), 1, 1.0, 1)
 		assert.Error(t, err)
 	})
 	
@@ -60,22 +60,10 @@ func TestUserRepository_ProcessClick_Errors(t *testing.T) {
 		defer mock.Close()
 		repo := NewUserRepository(mock)
 		mock.ExpectBegin()
-		mock.ExpectQuery("SELECT energy").WithArgs(int64(1)).WillReturnError(errors.New("select err"))
+		mock.ExpectQuery("SELECT balance, energy.*").WithArgs(int64(1)).WillReturnError(errors.New("select err"))
 		mock.ExpectRollback()
-		err := repo.ProcessClick(context.Background(), 1, 1.0, 1)
+		_, _, err := repo.ProcessClick(context.Background(), 1, 1.0, 1)
 		assert.Error(t, err)
-	})
-
-	t.Run("insufficient energy", func(t *testing.T) {
-		mock, _ := pgxmock.NewPool()
-		defer mock.Close()
-		repo := NewUserRepository(mock)
-		mock.ExpectBegin()
-		mock.ExpectQuery("SELECT energy").WithArgs(int64(1)).WillReturnRows(mock.NewRows([]string{"energy"}).AddRow(0))
-		mock.ExpectRollback()
-		err := repo.ProcessClick(context.Background(), 1, 1.0, 10)
-		assert.Error(t, err)
-		assert.Equal(t, "insufficient energy", err.Error())
 	})
 
 	t.Run("update err", func(t *testing.T) {
@@ -83,10 +71,12 @@ func TestUserRepository_ProcessClick_Errors(t *testing.T) {
 		defer mock.Close()
 		repo := NewUserRepository(mock)
 		mock.ExpectBegin()
-		mock.ExpectQuery("SELECT energy").WithArgs(int64(1)).WillReturnRows(mock.NewRows([]string{"energy"}).AddRow(100))
-		mock.ExpectExec("UPDATE users").WithArgs(1.0, 1, int64(1)).WillReturnError(errors.New("update err"))
+		mock.ExpectQuery("SELECT balance, energy.*").WithArgs(int64(1)).
+			WillReturnRows(mock.NewRows([]string{"balance", "energy", "max_energy", "passive_income", "last_active_at"}).
+				AddRow(10.0, 100, 1000, 0.0, nil))
+		mock.ExpectExec("UPDATE users").WithArgs(11.0, 99, int64(1)).WillReturnError(errors.New("update err"))
 		mock.ExpectRollback()
-		err := repo.ProcessClick(context.Background(), 1, 1.0, 1)
+		_, _, err := repo.ProcessClick(context.Background(), 1, 1.0, 1)
 		assert.Error(t, err)
 	})
 
@@ -95,11 +85,13 @@ func TestUserRepository_ProcessClick_Errors(t *testing.T) {
 		defer mock.Close()
 		repo := NewUserRepository(mock)
 		mock.ExpectBegin()
-		mock.ExpectQuery("SELECT energy").WithArgs(int64(1)).WillReturnRows(mock.NewRows([]string{"energy"}).AddRow(100))
-		mock.ExpectExec("UPDATE users").WithArgs(1.0, 1, int64(1)).WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+		mock.ExpectQuery("SELECT balance, energy.*").WithArgs(int64(1)).
+			WillReturnRows(mock.NewRows([]string{"balance", "energy", "max_energy", "passive_income", "last_active_at"}).
+				AddRow(10.0, 100, 1000, 0.0, nil))
+		mock.ExpectExec("UPDATE users").WithArgs(11.0, 99, int64(1)).WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 		mock.ExpectExec("INSERT INTO transactions").WithArgs(int64(1), 1.0).WillReturnError(errors.New("insert err"))
 		mock.ExpectRollback()
-		err := repo.ProcessClick(context.Background(), 1, 1.0, 1)
+		_, _, err := repo.ProcessClick(context.Background(), 1, 1.0, 1)
 		assert.Error(t, err)
 	})
 }

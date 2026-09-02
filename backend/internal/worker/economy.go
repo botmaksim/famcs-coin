@@ -11,10 +11,10 @@ import (
 
 // StartEconomyWorker runs background passive income and energy regeneration
 func StartEconomyWorker(ctx context.Context, pool *pgxpool.Pool) {
-	ticker := time.NewTicker(60 * time.Second)
+	ticker := time.NewTicker(3 * time.Second)
 	defer ticker.Stop()
 
-	log.Println("[Economy Worker] Started. Tick interval: 60s")
+	log.Println("[Economy Worker] Started. Tick interval: 3s")
 
 	for {
 		select {
@@ -28,7 +28,7 @@ func StartEconomyWorker(ctx context.Context, pool *pgxpool.Pool) {
 }
 
 func processEconomyTick(pool *pgxpool.Pool) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	// Update settings cache on each tick
@@ -36,13 +36,13 @@ func processEconomyTick(pool *pgxpool.Pool) {
 		log.Printf("Failed to update settings cache: %v", err)
 	}
 
-	// Mass update passive income and restore energy
+	// Mass update passive income (+3s share of hourly rate) and restore energy (+9 every 3s = 3/s)
 	query := `
 		UPDATE users 
 		SET 
-			balance = balance + (passive_income / 60.0),
-			energy = LEAST(energy + 10, max_energy)
-		WHERE passive_income > 0 OR energy < max_energy
+			balance = balance + (passive_income / 1200.0),
+			energy = LEAST(energy + 9, max_energy)
+		WHERE (passive_income > 0 AND CURRENT_TIMESTAMP - last_active_at < INTERVAL '3 hours') OR energy < max_energy
 	`
 
 	res, err := pool.Exec(ctx, query)
@@ -53,6 +53,6 @@ func processEconomyTick(pool *pgxpool.Pool) {
 
 	rowsAffected := res.RowsAffected()
 	if rowsAffected > 0 {
-		log.Printf("[Economy Worker] Successfully updated %d users (passive income & energy restored)", rowsAffected)
+		log.Printf("[Economy Worker] Updated %d active users", rowsAffected)
 	}
 }

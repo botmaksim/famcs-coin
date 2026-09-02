@@ -43,8 +43,9 @@ func (m *MockUserRepository) UpdateBalance(ctx context.Context, tx pgx.Tx, userI
 	return m.Called(ctx, tx, userID, amount, txType).Error(0)
 }
 
-func (m *MockUserRepository) ProcessClick(ctx context.Context, userID int64, coins float64, energyCost int) error {
-	return m.Called(ctx, userID, coins, energyCost).Error(0)
+func (m *MockUserRepository) ProcessClick(ctx context.Context, userID int64, coins float64, energyCost int) (float64, int, error) {
+	args := m.Called(ctx, userID, coins, energyCost)
+	return args.Get(0).(float64), args.Int(1), args.Error(2)
 }
 
 type MockShopRepository struct {
