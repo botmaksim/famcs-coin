@@ -6,7 +6,8 @@ import { BetsService } from '../../api/services/BetsService';
 import { ShopService } from '../../api/services/ShopService';
 import { FeedbackService } from '../../api/services/FeedbackService';
 import { NewsService } from '../../api/services/NewsService';
-import { ArrowLeft, Plus, Trash2, CheckCircle, Shield, AlertCircle, MessageSquare, Search, Check, X, Clock, RefreshCw, Newspaper, ThumbsUp, ThumbsDown, Edit3, XCircle, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, CheckCircle, Shield, AlertCircle, MessageSquare, Search, Check, X, Clock, RefreshCw, Newspaper, ThumbsUp, ThumbsDown, Edit3, XCircle, FileText, Languages } from 'lucide-react';
+import { convertLayout, convertTextToRu } from '../../utils/keyboardLayout';
 
 const TmaAdmin = () => {
   const { user } = useUser();
@@ -15,6 +16,7 @@ const TmaAdmin = () => {
   const [activeTab, setActiveTab] = useState('bets'); // 'bets' | 'shop' | 'feedback' | 'news'
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
+  const [forceRuLayout, setForceRuLayout] = useState(false);
 
   // News State
   const [adminNews, setAdminNews] = useState([]);
@@ -31,6 +33,11 @@ const TmaAdmin = () => {
   const [headerSubtitle, setHeaderSubtitle] = useState('Узнавайте первыми о новых фичах факультетской игры и голосуйте за идеи!');
   const [headerBanner, setHeaderBanner] = useState('');
   const [showBannerConfig, setShowBannerConfig] = useState(false);
+
+  const handleFieldChange = (setter) => (e) => {
+    const val = e.target.value;
+    setter(forceRuLayout ? convertTextToRu(val) : val);
+  };
 
   // Bets State
   const [bets, setBets] = useState([]);
@@ -905,31 +912,86 @@ const TmaAdmin = () => {
 
             {showBannerConfig && (
               <form onSubmit={handleSaveHeaderSettings} className="flex flex-col gap-3 mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
+                {/* Keyboard Layout Helper Bar */}
+                <div className="flex items-center justify-between p-2.5 bg-orange-50 dark:bg-slate-900/60 rounded-xl border border-orange-200/50 dark:border-slate-800 text-xs">
+                  <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                    <Languages size={15} className="text-orange-500 shrink-0" />
+                    <span className="text-[11px] font-medium">Баг Telegram Desktop с раскладкой?</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setForceRuLayout(!forceRuLayout)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                      forceRuLayout 
+                        ? 'bg-orange-500 text-white shadow-sm' 
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <span>Авто-RU: {forceRuLayout ? 'ВКЛ' : 'ВЫКЛ'}</span>
+                  </button>
+                </div>
+
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Главный заголовок</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-slate-400">Главный заголовок</label>
+                    {headerTitle && (
+                      <button
+                        type="button"
+                        onClick={() => setHeaderTitle(convertLayout(headerTitle))}
+                        className="text-[10px] font-bold text-orange-500 hover:text-orange-600 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded transition border border-orange-200/40 dark:border-orange-800/40"
+                        title="Исправить раскладку (RU ⇄ EN)"
+                      >
+                        RU ⇄ EN
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="text"
                     value={headerTitle}
-                    onChange={(e) => setHeaderTitle(e.target.value)}
+                    onChange={handleFieldChange(setHeaderTitle)}
                     className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white font-bold"
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Подзаголовок</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-slate-400">Подзаголовок</label>
+                    {headerSubtitle && (
+                      <button
+                        type="button"
+                        onClick={() => setHeaderSubtitle(convertLayout(headerSubtitle))}
+                        className="text-[10px] font-bold text-orange-500 hover:text-orange-600 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded transition border border-orange-200/40 dark:border-orange-800/40"
+                        title="Исправить раскладку (RU ⇄ EN)"
+                      >
+                        RU ⇄ EN
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="text"
                     value={headerSubtitle}
-                    onChange={(e) => setHeaderSubtitle(e.target.value)}
+                    onChange={handleFieldChange(setHeaderSubtitle)}
                     className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white"
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Текст баннера / Объявление (опционально)</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-slate-400">Текст баннера / Объявление (опционально)</label>
+                    {headerBanner && (
+                      <button
+                        type="button"
+                        onClick={() => setHeaderBanner(convertLayout(headerBanner))}
+                        className="text-[10px] font-bold text-orange-500 hover:text-orange-600 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded transition border border-orange-200/40 dark:border-orange-800/40"
+                        title="Исправить раскладку (RU ⇄ EN)"
+                      >
+                        RU ⇄ EN
+                      </button>
+                    )}
+                  </div>
                   <textarea
                     value={headerBanner}
-                    onChange={(e) => setHeaderBanner(e.target.value)}
+                    onChange={handleFieldChange(setHeaderBanner)}
                     placeholder="Например: Итоги опроса подводим в пятницу!"
                     rows={2}
                     className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white resize-none"
@@ -969,11 +1031,23 @@ const TmaAdmin = () => {
 
             <form onSubmit={handleSaveNews} className="flex flex-col gap-3">
               <div>
-                <label className="text-[11px] font-bold text-slate-400 block mb-1">Заголовок</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-slate-400">Заголовок</label>
+                  {newsTitle && (
+                    <button
+                      type="button"
+                      onClick={() => setNewsTitle(convertLayout(newsTitle))}
+                      className="text-[10px] font-bold text-orange-500 hover:text-orange-600 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded transition border border-orange-200/40 dark:border-orange-800/40"
+                      title="Исправить раскладку (RU ⇄ EN)"
+                    >
+                      RU ⇄ EN
+                    </button>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={newsTitle}
-                  onChange={(e) => setNewsTitle(e.target.value)}
+                  onChange={handleFieldChange(setNewsTitle)}
                   placeholder="Например: Добавим клановые войны?"
                   className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white"
                   required
@@ -981,10 +1055,22 @@ const TmaAdmin = () => {
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-400 block mb-1">Описание и детали</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-slate-400">Описание и детали</label>
+                  {newsContent && (
+                    <button
+                      type="button"
+                      onClick={() => setNewsContent(convertLayout(newsContent))}
+                      className="text-[10px] font-bold text-orange-500 hover:text-orange-600 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded transition border border-orange-200/40 dark:border-orange-800/40"
+                      title="Исправить раскладку (RU ⇄ EN)"
+                    >
+                      RU ⇄ EN
+                    </button>
+                  )}
+                </div>
                 <textarea
                   value={newsContent}
-                  onChange={(e) => setNewsContent(e.target.value)}
+                  onChange={handleFieldChange(setNewsContent)}
                   placeholder="Подробно опишите планируемый функционал..."
                   rows={4}
                   className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white resize-none"
@@ -1021,20 +1107,44 @@ const TmaAdmin = () => {
               {newsStatus !== 'open' && (
                 <div className="flex flex-col gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl">
                   <div>
-                    <label className="text-[11px] font-bold text-amber-700 dark:text-amber-400 block mb-1">Краткий вердикт</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-amber-700 dark:text-amber-400">Краткий вердикт</label>
+                      {newsVerdict && (
+                        <button
+                          type="button"
+                          onClick={() => setNewsVerdict(convertLayout(newsVerdict))}
+                          className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded transition"
+                          title="Исправить раскладку (RU ⇄ EN)"
+                        >
+                          RU ⇄ EN
+                        </button>
+                      )}
+                    </div>
                     <input
                       type="text"
                       value={newsVerdict}
-                      onChange={(e) => setNewsVerdict(e.target.value)}
+                      onChange={handleFieldChange(setNewsVerdict)}
                       placeholder="Принято в спринт #2"
                       className="w-full p-2 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg text-xs outline-none text-slate-800 dark:text-white"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-amber-700 dark:text-amber-400 block mb-1">Комментарий администрации</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-amber-700 dark:text-amber-400">Комментарий администрации</label>
+                      {newsVerdictNote && (
+                        <button
+                          type="button"
+                          onClick={() => setNewsVerdictNote(convertLayout(newsVerdictNote))}
+                          className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded transition"
+                          title="Исправить раскладку (RU ⇄ EN)"
+                        >
+                          RU ⇄ EN
+                        </button>
+                      )}
+                    </div>
                     <textarea
                       value={newsVerdictNote}
-                      onChange={(e) => setNewsVerdictNote(e.target.value)}
+                      onChange={handleFieldChange(setNewsVerdictNote)}
                       placeholder="Подробности реализации или причина закрытия..."
                       rows={2}
                       className="w-full p-2 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg text-xs outline-none text-slate-800 dark:text-white resize-none"
