@@ -32,7 +32,12 @@ func (r *betRepository) GetBets(ctx context.Context, userID int64) ([]models.Bet
 			e.id, e.title, e.description, e.options, e.status, e.closes_at, e.winning_option_index, e.created_at,
 			ub.option_index, ub.amount
 		FROM bet_events e
-		LEFT JOIN user_bets ub ON e.id = ub.event_id AND ub.user_id = $1
+		LEFT JOIN (
+			SELECT DISTINCT ON (event_id) event_id, option_index, amount
+			FROM user_bets
+			WHERE user_id = $1
+			ORDER BY event_id, created_at DESC
+		) ub ON e.id = ub.event_id
 		ORDER BY e.created_at DESC
 	`
 	rows, err := r.db.Query(ctx, query, userID)
@@ -110,9 +115,31 @@ func (r *betRepository) PlaceBet(ctx context.Context, userID int64, eventID int,
 		return err
 	}
 
-	_, err = tx.Exec(ctx, `INSERT INTO user_bets (event_id, user_id, option_index, amount) VALUES ($1, $2, $3, $4)`, eventID, userID, optionIndex, amount)
-	if err != nil {
-		return err
+	var existingBetID int64
+	var existingOption int
+	err = tx.QueryRow(ctx, `SELECT id, option_index FROM user_bets WHERE event_id = $1 AND user_id = $2 ORDER BY created_at DESC LIMIT 1`, eventID, userID).Scan(&existingBetID, &existingOption)
+	if err == nil {
+		if existingOption == optionIndex {
+			_, err = tx.Exec(ctx, `UPDATE user_bets SET amount = amount + $1 WHERE id = $2`, amount, existingBetID)
+			if err != nil {
+				return err
+			}
+		} else {
+			var optionsRaw []byte
+			tx.QueryRow(ctx, `SELECT options FROM bet_events WHERE id = $1`, eventID).Scan(&optionsRaw)
+			var opts []string
+			json.Unmarshal(optionsRaw, &opts)
+			optName := "другой вариант"
+			if existingOption >= 0 && existingOption < len(opts) {
+				optName = opts[existingOption]
+			}
+			return fmt.Errorf("вы уже поставили на «%s». В тотализаторе можно только увеличивать ставку на свой выбор", optName)
+		}
+	} else {
+		_, err = tx.Exec(ctx, `INSERT INTO user_bets (event_id, user_id, option_index, amount) VALUES ($1, $2, $3, $4)`, eventID, userID, optionIndex, amount)
+		if err != nil {
+			return err
+		}
 	}
 
 	_, err = tx.Exec(ctx, `INSERT INTO transactions (user_id, amount, type) VALUES ($1, $2, 'bet_place')`, userID, -amount)
