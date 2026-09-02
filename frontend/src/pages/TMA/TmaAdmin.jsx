@@ -6,11 +6,13 @@ import { BetsService } from '../../api/services/BetsService';
 import { ShopService } from '../../api/services/ShopService';
 import { FeedbackService } from '../../api/services/FeedbackService';
 import { NewsService } from '../../api/services/NewsService';
+import { useToast } from '../../context/ToastContext';
 import { ArrowLeft, Plus, Trash2, CheckCircle, Shield, AlertCircle, MessageSquare, Search, Check, X, Clock, RefreshCw, Newspaper, ThumbsUp, ThumbsDown, Edit3, XCircle, FileText, Languages, ChevronDown } from 'lucide-react';
 import { convertLayout, convertTextToRu } from '../../utils/keyboardLayout';
 
 const TmaAdmin = () => {
   const { user } = useUser();
+  const { showSuccess, showError, showConfirm } = useToast();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('bets'); // 'bets' | 'shop' | 'feedback' | 'news'
@@ -205,11 +207,17 @@ const TmaAdmin = () => {
   };
 
   const handleDeleteNews = async (id) => {
-    if (!window.confirm('Удалить эту новость?')) return;
+    const confirmed = await showConfirm({
+      title: 'Удалить новость?',
+      message: 'Эта новость и результаты голосования будут безвозвратно удалены.',
+      confirmText: 'Удалить',
+      isDanger: true,
+    });
+    if (!confirmed) return;
     setLoading(true);
     try {
       await NewsService.deleteNews(id);
-      showNotification('Новость удалена');
+      showNotification('Новость успешно удалена');
       setAdminNews(prev => prev.filter(item => item.id !== id));
     } catch (err) {
       showNotification('Ошибка при удалении новости', 'error');
@@ -232,7 +240,13 @@ const TmaAdmin = () => {
   };
 
   const handleDeleteFeedback = async (feedbackId) => {
-    if (!confirm('Вы уверены, что хотите удалить этот отзыв?')) return;
+    const confirmed = await showConfirm({
+      title: 'Удалить отзыв?',
+      message: 'Вы уверены, что хотите удалить этот отзыв из базы данных?',
+      confirmText: 'Удалить',
+      isDanger: true,
+    });
+    if (!confirmed) return;
     setLoading(true);
     try {
       await AdminService.deleteFeedback(feedbackId);
@@ -246,8 +260,11 @@ const TmaAdmin = () => {
   };
 
   const showNotification = (text, type = 'success') => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage({ text: '', type: '' }), 4000);
+    if (type === 'error') {
+      showError(text);
+    } else {
+      showSuccess(text);
+    }
   };
 
   // --- BET ACTIONS ---
@@ -308,7 +325,13 @@ const TmaAdmin = () => {
       return;
     }
 
-    if (!confirm('Завершить событие и выплатить выигрыши участникам?')) return;
+    const confirmed = await showConfirm({
+      title: 'Завершить событие?',
+      message: 'Завершить событие и выплатить выигрыши всем победителям?',
+      confirmText: 'Завершить и выплатить',
+      isDanger: false,
+    });
+    if (!confirmed) return;
 
     setLoading(true);
     try {
@@ -354,7 +377,13 @@ const TmaAdmin = () => {
   };
 
   const handleDeleteShopItem = async (itemId) => {
-    if (!confirm('Удалить этот товар? Потраченные коины вернутся игрокам автоматически!')) return;
+    const confirmed = await showConfirm({
+      title: 'Удалить товар?',
+      message: 'Удалить этот товар из магазина? Потраченные коины вернутся игрокам автоматически.',
+      confirmText: 'Удалить и вернуть средства',
+      isDanger: true,
+    });
+    if (!confirmed) return;
 
     setLoading(true);
     try {

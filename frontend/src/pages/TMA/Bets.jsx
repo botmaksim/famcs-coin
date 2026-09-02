@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { BetsService } from '../../api/services/BetsService';
 import { useUser } from '../../context/UserContext';
+import { useToast } from '../../context/ToastContext';
 import { Skeleton } from '../../components/Skeleton';
 
 const Bets = () => {
   const { user, fetchProfile } = useUser();
+  const { showSuccess, showError } = useToast();
   const [bets, setBets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [betAmounts, setBetAmounts] = useState({});
@@ -27,18 +29,18 @@ const Bets = () => {
   const handlePlaceBet = async (eventId, option) => {
     const amount = parseInt(betAmounts[`${eventId}_${option}`]);
     if (!amount || amount <= 0 || amount > user.balance) {
-      alert("Некорректная сумма ставки");
+      showError("Некорректная сумма ставки");
       return;
     }
     
     try {
       await BetsService.placeBet(eventId, option, amount);
-      alert("Ставка принята!");
+      showSuccess("Ставка принята!");
       setBetAmounts(prev => ({ ...prev, [`${eventId}_${option}`]: "" }));
       fetchProfile();
       fetchBets();
     } catch (err) {
-      alert(err.response?.data || "Ошибка при ставке");
+      showError(err.response?.data || "Ошибка при ставке");
     }
   };
 

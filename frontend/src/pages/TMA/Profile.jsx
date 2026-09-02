@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
+import { useToast } from '../../context/ToastContext';
 import { UserService } from '../../api/services/UserService';
 import { Shield } from 'lucide-react';
 
 const Profile = () => {
   const { user, fetchProfile } = useUser();
+  const { showSuccess, showError } = useToast();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState(user?.display_name || "");
   const [isHidden, setIsHidden] = useState(user?.is_hidden || false);
@@ -20,9 +22,9 @@ const Profile = () => {
         is_hidden: isHidden
       });
       await fetchProfile();
-      alert("Настройки сохранены!");
+      showSuccess("Настройки успешно сохранены!");
     } catch (err) {
-      alert("Ошибка при сохранении");
+      showError("Ошибка при сохранении настроек");
     } finally {
       setLoading(false);
     }

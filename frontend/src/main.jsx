@@ -20,14 +20,17 @@ const queryClient = new QueryClient({
 })
 
 import { ThemeProvider } from './context/ThemeContext'
+import { ToastProvider } from './context/ToastContext'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
         <QueryClientProvider client={queryClient}>
             <ThemeProvider>
-                <BrowserRouter>
-                    <App />
-                </BrowserRouter>
+                <ToastProvider>
+                    <BrowserRouter>
+                        <App />
+                    </BrowserRouter>
+                </ToastProvider>
             </ThemeProvider>
         </QueryClientProvider>
     </React.StrictMode>,

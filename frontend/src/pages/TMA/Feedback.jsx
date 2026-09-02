@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { FeedbackService } from '../../api/services/FeedbackService';
 import { NewsService } from '../../api/services/NewsService';
+import { useToast } from '../../context/ToastContext';
 import { ThumbsUp, ThumbsDown, Sparkles, Calendar, CheckCircle, Send, Lock, Shield, Clock, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Feedback = () => {
+  const { showSuccess, showError } = useToast();
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
@@ -38,10 +40,11 @@ const Feedback = () => {
     try {
       await FeedbackService.submitFeedback(message);
       setSentSuccess(true);
+      showSuccess("Спасибо! Ваш отзыв успешно отправлен.");
       setMessage("");
       setTimeout(() => setSentSuccess(false), 4000);
     } catch (err) {
-      alert("Ошибка при отправке отзыва");
+      showError("Ошибка при отправке отзыва");
     } finally {
       setLoading(false);
     }

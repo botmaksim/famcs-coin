@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useUser } from '../../context/UserContext';
+import { useToast } from '../../context/ToastContext';
 import { UserService } from '../../api/services/UserService';
 import { ShopService } from '../../api/services/ShopService';
 import { Skeleton } from '../../components/Skeleton';
@@ -9,6 +10,7 @@ import { Zap, Clock, CheckCircle2 } from 'lucide-react';
 
 const Terminal = () => {
   const { user, updateLocalUser, loading, error, fetchProfile, soundEnabled } = useUser();
+  const { showSuccess, showError } = useToast();
   
   const [clicks, setClicks] = useState([]);
   const [shopItems, setShopItems] = useState([]);
@@ -150,8 +152,9 @@ const Terminal = () => {
       await ShopService.buyItem(id);
       await fetchProfile();
       await fetchShop();
+      showSuccess("Улучшение успешно куплено!");
     } catch (e) {
-      alert("Не удалось купить улучшение!");
+      showError(e.response?.data || "Не удалось купить улучшение!");
     }
   };
 
@@ -163,8 +166,9 @@ const Terminal = () => {
       await ShopService.sellItem(id);
       await fetchProfile();
       await fetchShop();
+      showSuccess("Улучшение успешно продано!");
     } catch (e) {
-      alert("Не удалось продать улучшение!");
+      showError(e.response?.data || "Не удалось продать улучшение!");
     }
   };
 
