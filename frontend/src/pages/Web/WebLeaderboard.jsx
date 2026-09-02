@@ -71,7 +71,7 @@ const WebLeaderboard = () => {
                       </div>
                     </td>
                     <td className="p-5 text-right text-lg font-bold text-orange-500">
-                      {Math.floor(item.balance).toLocaleString('ru-RU')} <img src="/famcscoin.jpg" className="inline w-4 h-4 rounded-full -mt-1" />
+                      {Math.floor(item.balance).toLocaleString('ru-RU')} <img src="/famcscoin.png" className="inline w-4 h-4 rounded-full -mt-1" />
                     </td>
                   </tr>
                 ))}

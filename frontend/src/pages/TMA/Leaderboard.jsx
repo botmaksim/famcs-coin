@@ -27,9 +27,9 @@ const Leaderboard = () => {
   const rest = users.slice(3);
 
   const getMedal = (index) => {
-    if (index === 0) return '/medal_gold.jpg';
-    if (index === 1) return '/medal_silver.jpg';
-    if (index === 2) return '/medal_bronze.jpg';
+    if (index === 0) return '/medal_gold.png';
+    if (index === 1) return '/medal_silver.png';
+    if (index === 2) return '/medal_bronze.png';
     return null;
   };
 

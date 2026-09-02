@@ -17,7 +17,7 @@ const WebLanding = () => {
             {/* Left: Circle Image Placeholder */}
             <div className="relative flex justify-center">
                <div className="w-[400px] h-[400px] rounded-full bg-slate-50 dark:bg-slate-800 flex justify-center items-center overflow-hidden relative shadow-md">
-                 <img src="/famcscoin.jpg" alt="FAMCS COIN Logo" className="w-full h-full object-cover" />
+                 <img src="/famcscoin.png" alt="FAMCS COIN Logo" className="w-full h-full object-cover" />
                </div>
             </div>
 

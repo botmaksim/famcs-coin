@@ -71,51 +71,43 @@ const Bets = () => {
               <h3 className="font-bold text-lg mb-2 text-slate-800 dark:text-slate-100 leading-tight">{bet.title}</h3>
               <p className="text-sm text-slate-500 mb-4">{bet.description}</p>
               
-              <div className="flex justify-between text-xs font-bold text-slate-400 mb-3 px-1 uppercase tracking-wider">
-                <span>Пул А: {Math.floor(bet.pool_a).toLocaleString()} <img src="/famcscoin.jpg" className="inline w-3 h-3 rounded-full" /></span>
-                <span>Пул B: {Math.floor(bet.pool_b).toLocaleString()} <img src="/famcscoin.jpg" className="inline w-3 h-3 rounded-full" /></span>
-              </div>
+              {bet.user_bet_amount > 0 && (
+                <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/40 rounded-xl text-xs font-bold text-orange-600 dark:text-orange-400">
+                  Ваша ставка: {Math.floor(bet.user_bet_amount).toLocaleString()} коинов на «{bet.options?.[bet.user_bet_option]}»
+                </div>
+              )}
 
               <div className="flex flex-col gap-3">
-                {/* Option A */}
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700/50 flex flex-col gap-2">
-                  <div className="font-semibold text-sm text-orange-600 dark:text-orange-400">{bet.option_a}</div>
-                  <div className="flex gap-2">
-                    <input 
-                      type="number" 
-                      placeholder="Сумма" 
-                      value={betAmounts[`${bet.id}_A`] || ""}
-                      onChange={(e) => setBetAmounts(prev => ({...prev, [`${bet.id}_A`]: e.target.value}))}
-                      className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-orange-500"
-                    />
-                    <button 
-                      onClick={() => handlePlaceBet(bet.id, "A")}
-                      className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-1.5 px-4 rounded-lg text-sm shadow-md transition-colors"
-                    >
-                      Поставить
-                    </button>
+                {bet.options?.map((opt, optIdx) => (
+                  <div key={optIdx} className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700/50 flex flex-col gap-2">
+                    <div className="flex justify-between items-center text-sm font-bold">
+                      <span className="text-slate-800 dark:text-slate-200">{opt}</span>
+                      <span className="text-xs text-slate-400 flex items-center gap-1">
+                        Пул: {Math.floor(bet.pools?.[optIdx] || 0).toLocaleString()}
+                        <img src="/famcscoin.png" alt="coin" className="w-3.5 h-3.5 object-contain" />
+                      </span>
+                    </div>
+                    {bet.status === 'open' && (
+                      <div className="flex gap-2">
+                        <input 
+                          type="number" 
+                          placeholder="Сумма ставки" 
+                          min="1"
+                          max={user.balance}
+                          value={betAmounts[`${bet.id}_${optIdx}`] || ""}
+                          onChange={(e) => setBetAmounts(prev => ({...prev, [`${bet.id}_${optIdx}`]: e.target.value}))}
+                          className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
+                        />
+                        <button 
+                          onClick={() => handlePlaceBet(bet.id, optIdx)}
+                          className="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold py-1.5 px-4 rounded-lg text-sm shadow-md transition"
+                        >
+                          Поставить
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </div>
-
-                {/* Option B */}
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700/50 flex flex-col gap-2">
-                  <div className="font-semibold text-sm text-blue-600 dark:text-blue-400">{bet.option_b}</div>
-                  <div className="flex gap-2">
-                    <input 
-                      type="number" 
-                      placeholder="Сумма" 
-                      value={betAmounts[`${bet.id}_B`] || ""}
-                      onChange={(e) => setBetAmounts(prev => ({...prev, [`${bet.id}_B`]: e.target.value}))}
-                      className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                    <button 
-                      onClick={() => handlePlaceBet(bet.id, "B")}
-                      className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1.5 px-4 rounded-lg text-sm shadow-md transition-colors"
-                    >
-                      Поставить
-                    </button>
-                  </div>
-                </div>
+                ))}
               </div>
 
             </div>
