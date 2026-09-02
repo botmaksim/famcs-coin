@@ -65,41 +65,12 @@ function App() {
   const location = useLocation();
 
   useEffect(() => {
-    // Theme setup
-    const savedTheme = localStorage.getItem('theme');
     const tg = window.Telegram?.WebApp;
-    
-    let isDark;
-    if (savedTheme) {
-      isDark = savedTheme === 'dark';
-    } else if (tg?.colorScheme) {
-      isDark = tg.colorScheme === 'dark';
-    } else {
-      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-
     const isTelegram = tg && tg.initData && tg.initData.length > 0;
 
     if (isTelegram) {
       tg.ready();
       tg.expand();
-      
-      // Auto update theme on change in TG only if user hasn't chosen manually
-      tg.onEvent('themeChanged', () => {
-        if (!localStorage.getItem('theme')) {
-          if (tg.colorScheme === 'dark') {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-          }
-        }
-      });
       
       if (location.pathname === '/') {
         navigate('/app/terminal', { replace: true });

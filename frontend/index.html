@@ -10,9 +10,30 @@
     <script>
       try {
         const saved = localStorage.getItem('theme');
-        const tgDark = window.Telegram?.WebApp?.colorScheme === 'dark';
-        const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (saved === 'dark' || (!saved && (tgDark || sysDark))) {
+        let isDark = false;
+        if (saved === 'dark') {
+          isDark = true;
+        } else if (saved === 'light') {
+          isDark = false;
+        } else {
+          const tg = window.Telegram?.WebApp;
+          if (tg?.colorScheme === 'dark') {
+            isDark = true;
+          } else if (tg?.colorScheme === 'light') {
+            isDark = false;
+          } else if (tg?.themeParams?.bg_color) {
+            const hex = tg.themeParams.bg_color.replace('#', '');
+            if (hex.length === 6) {
+              const r = parseInt(hex.substring(0, 2), 16);
+              const g = parseInt(hex.substring(2, 4), 16);
+              const b = parseInt(hex.substring(4, 6), 16);
+              isDark = (r * 299 + g * 587 + b * 114) / 1000 < 128;
+            }
+          } else {
+            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+        }
+        if (isDark) {
           document.documentElement.classList.add('dark');
         } else {
           document.documentElement.classList.remove('dark');

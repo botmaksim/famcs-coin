@@ -1,28 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useUser } from '../../context/UserContext';
+import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { Trophy, Volume2, VolumeX, Sun, Moon } from 'lucide-react';
 
 const TmaHeader = () => {
   const { user, soundEnabled, toggleSound } = useUser();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains('dark'));
-  }, []);
-
-  const toggleTheme = () => {
-    if (isDark) {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-      setIsDark(false);
-    } else {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-      setIsDark(true);
-    }
-  };
 
   return (
     <div className="flex justify-between items-center px-5 py-4 bg-[var(--card-bg)] border-b border-[var(--glass-border)] backdrop-blur-md sticky top-0 z-50">

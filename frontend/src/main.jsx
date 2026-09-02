@@ -19,12 +19,16 @@ const queryClient = new QueryClient({
   },
 })
 
+import { ThemeProvider } from './context/ThemeContext'
+
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
         <QueryClientProvider client={queryClient}>
-            <BrowserRouter>
-                <App />
-            </BrowserRouter>
+            <ThemeProvider>
+                <BrowserRouter>
+                    <App />
+                </BrowserRouter>
+            </ThemeProvider>
         </QueryClientProvider>
     </React.StrictMode>,
 )

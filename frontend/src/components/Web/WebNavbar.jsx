@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import TelegramLoginWidget from '../TelegramLoginWidget';
 import { useUser } from '../../context/UserContext';
+import { useTheme } from '../../context/ThemeContext';
 import { Moon, Sun, LogIn, LogOut, Shield, X, Send, KeyRound } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const WebNavbar = () => {
   const { user, fetchProfile } = useUser();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const [isDark, setIsDark] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authTab, setAuthTab] = useState('telegram'); // 'telegram' | 'admin'
 
@@ -16,22 +17,6 @@ const WebNavbar = () => {
   const [adminTgId, setAdminTgId] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminLoading, setAdminLoading] = useState(false);
-
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains('dark'));
-  }, []);
-
-  const toggleTheme = () => {
-    if (isDark) {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-      setIsDark(false);
-    } else {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-      setIsDark(true);
-    }
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('web_admin_auth');
