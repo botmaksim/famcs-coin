@@ -40,12 +40,34 @@ const TmaAdmin = () => {
   };
 
   // Bets State
+  const getTomorrowDate = () => {
+    const d = new Date(Date.now() + 24 * 3600 * 1000);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [bets, setBets] = useState([]);
   const [betTitle, setBetTitle] = useState('');
   const [betDesc, setBetDesc] = useState('');
   const [betOptions, setBetOptions] = useState(['', '']);
-  const [betClosesAt, setBetClosesAt] = useState('');
+  const [betCloseDate, setBetCloseDate] = useState(getTomorrowDate);
+  const [betCloseHour, setBetCloseHour] = useState('18');
+  const [betCloseMinute, setBetCloseMinute] = useState('00');
   const [selectedWinners, setSelectedWinners] = useState({});
+
+  const handleApplyDatePreset = (hours) => {
+    const d = new Date(Date.now() + hours * 3600 * 1000);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    setBetCloseDate(`${year}-${month}-${day}`);
+    setBetCloseHour(h);
+    setBetCloseMinute(m);
+  };
 
   // Shop State
   const [shopItems, setShopItems] = useState([]);
@@ -249,10 +271,12 @@ const TmaAdmin = () => {
   const handleCreateBet = async (e) => {
     e.preventDefault();
     const cleanOptions = betOptions.map(o => o.trim()).filter(Boolean);
-    if (!betTitle || cleanOptions.length < 2 || !betClosesAt) {
+    if (!betTitle || cleanOptions.length < 2 || !betCloseDate) {
       showNotification('Заполните название, дату и минимум 2 варианта', 'error');
       return;
     }
+
+    const effectiveClosesAt = `${betCloseDate}T${betCloseHour}:${betCloseMinute}:00`;
 
     setLoading(true);
     try {
@@ -260,13 +284,15 @@ const TmaAdmin = () => {
         title: betTitle,
         description: betDesc,
         options: cleanOptions,
-        closes_at: new Date(betClosesAt).toISOString()
+        closes_at: new Date(effectiveClosesAt).toISOString()
       });
       showNotification('Событие для ставок успешно создано!');
       setBetTitle('');
       setBetDesc('');
       setBetOptions(['', '']);
-      setBetClosesAt('');
+      setBetCloseDate(getTomorrowDate());
+      setBetCloseHour('18');
+      setBetCloseMinute('00');
       loadData();
     } catch (err) {
       showNotification(err.response?.data || 'Ошибка при создании события', 'error');
@@ -502,14 +528,106 @@ const TmaAdmin = () => {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">Дата и время закрытия</label>
-                <input
-                  type="datetime-local"
-                  value={betClosesAt}
-                  onChange={(e) => setBetClosesAt(e.target.value)}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 text-sm dark:text-white"
-                  required
-                />
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">
+                  Дата и время закрытия (24-часовой формат)
+                </label>
+
+                {/* Quick Presets */}
+                <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+                  <span className="text-[11px] font-semibold text-slate-400 mr-0.5">Быстро:</span>
+                  {[
+                    { label: '+2ч', hours: 2 },
+                    { label: '+6ч', hours: 6 },
+                    { label: '+12ч', hours: 12 },
+                    { label: '+1 день', hours: 24 },
+                    { label: '+3 дня', hours: 72 },
+                    { label: '+1 неделя', hours: 168 },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => handleApplyDatePreset(preset.hours)}
+                      className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-600 dark:bg-slate-700/60 dark:hover:bg-slate-700 dark:text-orange-400 transition cursor-pointer"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Date & 24h Time Inputs */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="sm:col-span-2">
+                    <input
+                      type="date"
+                      value={betCloseDate}
+                      onChange={(e) => setBetCloseDate(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 text-xs text-slate-800 dark:text-white cursor-pointer font-medium"
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="relative">
+                      <select
+                        value={betCloseHour}
+                        onChange={(e) => setBetCloseHour(e.target.value)}
+                        className="w-full appearance-none p-2.5 pr-6 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 text-xs text-slate-800 dark:text-white cursor-pointer font-mono font-bold text-center"
+                      >
+                        {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => (
+                          <option key={h} value={h} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">
+                            {h} ч
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                        <ChevronDown size={12} />
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <select
+                        value={betCloseMinute}
+                        onChange={(e) => setBetCloseMinute(e.target.value)}
+                        className="w-full appearance-none p-2.5 pr-6 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 text-xs text-slate-800 dark:text-white cursor-pointer font-mono font-bold text-center"
+                      >
+                        {Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')).map(m => (
+                          <option key={m} value={m} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">
+                            {m} м
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                        <ChevronDown size={12} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Preview Banner in 24h Russian format */}
+                {betCloseDate && (
+                  <div className="mt-2.5 p-2.5 bg-orange-50/80 dark:bg-slate-900/60 rounded-xl border border-orange-200/50 dark:border-slate-800 text-xs flex items-center justify-between text-slate-700 dark:text-slate-300">
+                    <div className="flex items-center gap-1.5">
+                      <Clock size={14} className="text-orange-500 shrink-0" />
+                      <span className="font-semibold capitalize">
+                        {(() => {
+                          try {
+                            const d = new Date(`${betCloseDate}T${betCloseHour}:${betCloseMinute}:00`);
+                            if (isNaN(d.getTime())) return '';
+                            return d.toLocaleDateString('ru-RU', {
+                              weekday: 'long',
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric'
+                            }) + `, ${betCloseHour}:${betCloseMinute}`;
+                          } catch (e) {
+                            return '';
+                          }
+                        })()}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold text-orange-500 bg-orange-100 dark:bg-orange-950/40 px-2 py-0.5 rounded-full border border-orange-200/40 dark:border-orange-800/40">
+                      24ч
+                    </span>
+                  </div>
+                )}
               </div>
 
               <button
