@@ -56,22 +56,22 @@ const WebLanding = () => {
         </section>
 
         {/* Hero CTA Section */}
-        <section className="relative overflow-hidden text-center py-14 px-6 sm:px-12 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl shadow-xl border border-slate-800">
+        <section className="relative overflow-hidden text-center py-14 px-6 sm:px-12 bg-gradient-to-br from-orange-50/90 via-white to-amber-50/90 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 rounded-3xl shadow-xl shadow-orange-500/5 dark:shadow-2xl border border-orange-200/60 dark:border-slate-800 transition-colors">
           {/* Subtle Ambient Glows */}
-          <div className="absolute -top-24 -right-24 w-80 h-80 bg-orange-500/15 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute -top-24 -right-24 w-80 h-80 bg-orange-500/10 dark:bg-orange-500/15 rounded-full blur-3xl pointer-events-none"></div>
           <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-          <h2 className="text-4xl sm:text-5xl m-0 mb-4 text-white font-black tracking-tight drop-shadow-sm">
+          <h2 className="text-4xl sm:text-5xl m-0 mb-4 text-slate-900 dark:text-white font-black tracking-tight drop-shadow-sm">
             Врывайся в Топ
           </h2>
-          <p className="text-base sm:text-lg text-slate-300 max-w-xl mx-auto mb-8 leading-relaxed font-medium">
+          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto mb-8 leading-relaxed font-medium">
             Главная экономическая мини-игра факультета. Тапай, улучшай навыки, делай ставки и соревнуйся за первенство факультета.
           </p>
           <a 
             href={`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'famcs_coin_bot'}/app`} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 py-4 px-10 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-black rounded-2xl text-base shadow-[0_8px_25px_rgba(249,115,22,0.4)] transition-all hover:scale-105 active:scale-95 uppercase tracking-wide no-underline"
+            className="inline-flex items-center gap-2 py-4 px-10 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-black rounded-2xl text-base shadow-[0_8px_25px_rgba(249,115,22,0.35)] transition-all hover:scale-105 active:scale-95 uppercase tracking-wide no-underline"
           >
             <span>Играть в Telegram</span>
             <ArrowRight size={18} />
