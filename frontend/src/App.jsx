@@ -65,12 +65,19 @@ function App() {
 
   useEffect(() => {
     // Theme setup
-    const isDark = localStorage.getItem('theme') === 'dark' || 
-                   (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    
+    const savedTheme = localStorage.getItem('theme');
     const tg = window.Telegram?.WebApp;
     
-    if (tg?.colorScheme === 'dark' || isDark) {
+    let isDark;
+    if (savedTheme) {
+      isDark = savedTheme === 'dark';
+    } else if (tg?.colorScheme) {
+      isDark = tg.colorScheme === 'dark';
+    } else {
+      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    if (isDark) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
@@ -82,12 +89,14 @@ function App() {
       tg.ready();
       tg.expand();
       
-      // Auto update theme on change in TG
+      // Auto update theme on change in TG only if user hasn't chosen manually
       tg.onEvent('themeChanged', () => {
-        if (tg.colorScheme === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
+        if (!localStorage.getItem('theme')) {
+          if (tg.colorScheme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
         }
       });
       

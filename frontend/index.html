@@ -7,6 +7,18 @@
     <link rel="icon" type="image/png" href="/famcscoin.png" />
     <!-- Подключаем Telegram Web App -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      try {
+        const saved = localStorage.getItem('theme');
+        const tgDark = window.Telegram?.WebApp?.colorScheme === 'dark';
+        const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (saved === 'dark' || (!saved && (tgDark || sysDark))) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
