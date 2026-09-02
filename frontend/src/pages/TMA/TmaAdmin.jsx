@@ -738,27 +738,37 @@ const TmaAdmin = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 mb-1 block">Цена покупки</label>
-                  <input
-                    type="number"
-                    value={itemPrice}
-                    onChange={(e) => setItemPrice(e.target.value)}
-                    placeholder="2000"
-                    min="1"
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 text-sm dark:text-white"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={itemPrice}
+                      onChange={(e) => setItemPrice(e.target.value)}
+                      placeholder="2000"
+                      min="1"
+                      className="w-full p-3 pr-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 text-sm dark:text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      required
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
+                      FC
+                    </span>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-500 mb-1 block">Доход в час</label>
-                  <input
-                    type="number"
-                    value={itemProfit}
-                    onChange={(e) => setItemProfit(e.target.value)}
-                    placeholder="150"
-                    min="1"
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 text-sm dark:text-white"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={itemProfit}
+                      onChange={(e) => setItemProfit(e.target.value)}
+                      placeholder="150"
+                      min="1"
+                      className="w-full p-3 pr-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 text-sm dark:text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      required
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-orange-500 pointer-events-none">
+                      +/ч
+                    </span>
+                  </div>
                 </div>
               </div>
 

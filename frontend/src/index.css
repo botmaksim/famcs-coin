@@ -82,6 +82,18 @@ select option {
   color: var(--text-color);
 }
 
+/* Remove native number input spin buttons across all browsers */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
+
 /* Animations */
 @keyframes pulseGlow {
   0% { box-shadow: 0 0 20px rgba(249, 115, 22, 0.1); }

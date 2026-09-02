@@ -96,7 +96,7 @@ const Bets = () => {
                           max={user.balance}
                           value={betAmounts[`${bet.id}_${optIdx}`] || ""}
                           onChange={(e) => setBetAmounts(prev => ({...prev, [`${bet.id}_${optIdx}`]: e.target.value}))}
-                          className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-orange-500 dark:text-white"
+                          className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-orange-500 dark:text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                         <button 
                           onClick={() => handlePlaceBet(bet.id, optIdx)}
