@@ -6,19 +6,24 @@ import Terminal from './Terminal';
 
 // Mock the services and stores
 vi.mock('../../api/services/UserService', () => ({
+  UserService: {
+    click: vi.fn().mockResolvedValue({}),
+  },
   default: {
     click: vi.fn().mockResolvedValue({}),
   },
 }));
 
-vi.mock('../../api/services/ShopService', () => {
-  return {
-    default: {
-      getItems: vi.fn().mockResolvedValue([]),
-      buyItem: vi.fn(),
-    }
-  };
-});
+vi.mock('../../api/services/ShopService', () => ({
+  ShopService: {
+    getItems: vi.fn().mockResolvedValue({ data: [] }),
+    buyItem: vi.fn(),
+  },
+  default: {
+    getItems: vi.fn().mockResolvedValue({ data: [] }),
+    buyItem: vi.fn(),
+  }
+}));
 
 vi.mock('../../context/UserContext', () => ({
   useUser: () => ({
