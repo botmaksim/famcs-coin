@@ -6,7 +6,7 @@ import { BetsService } from '../../api/services/BetsService';
 import { ShopService } from '../../api/services/ShopService';
 import { FeedbackService } from '../../api/services/FeedbackService';
 import { NewsService } from '../../api/services/NewsService';
-import { ArrowLeft, Plus, Trash2, CheckCircle, Shield, AlertCircle, MessageSquare, Search, Check, X, Clock, RefreshCw, Newspaper, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, CheckCircle, Shield, AlertCircle, MessageSquare, Search, Check, X, Clock, RefreshCw, Newspaper, ThumbsUp, ThumbsDown, Edit3, XCircle } from 'lucide-react';
 
 const TmaAdmin = () => {
   const { user } = useUser();
@@ -21,6 +21,7 @@ const TmaAdmin = () => {
   const [newsTitle, setNewsTitle] = useState('');
   const [newsContent, setNewsContent] = useState('');
   const [newsImage, setNewsImage] = useState('');
+  const [editingNewsId, setEditingNewsId] = useState(null);
 
   // Bets State
   const [bets, setBets] = useState([]);
@@ -64,7 +65,21 @@ const TmaAdmin = () => {
     }
   };
 
-  const handleCreateNews = async (e) => {
+  const handleStartEditNews = (item) => {
+    setEditingNewsId(item.id);
+    setNewsTitle(item.title);
+    setNewsContent(item.content);
+    setNewsImage(item.image_url || '');
+  };
+
+  const handleCancelEditNews = () => {
+    setEditingNewsId(null);
+    setNewsTitle('');
+    setNewsContent('');
+    setNewsImage('');
+  };
+
+  const handleSaveNews = async (e) => {
     e.preventDefault();
     if (!newsTitle.trim() || !newsContent.trim()) {
       showNotification('Заполните заголовок и текст новости', 'error');
@@ -72,19 +87,30 @@ const TmaAdmin = () => {
     }
     setLoading(true);
     try {
-      await NewsService.createNews({
-        title: newsTitle.trim(),
-        content: newsContent.trim(),
-        image_url: newsImage.trim() || null
-      });
-      showNotification('Новость успешно опубликована!');
+      if (editingNewsId) {
+        await NewsService.updateNews({
+          id: editingNewsId,
+          title: newsTitle.trim(),
+          content: newsContent.trim(),
+          image_url: newsImage.trim() || null
+        });
+        showNotification('Новость успешно обновлена!');
+      } else {
+        await NewsService.createNews({
+          title: newsTitle.trim(),
+          content: newsContent.trim(),
+          image_url: newsImage.trim() || null
+        });
+        showNotification('Новость успешно опубликована!');
+      }
+      setEditingNewsId(null);
       setNewsTitle('');
       setNewsContent('');
       setNewsImage('');
       const res = await NewsService.getNews();
       setAdminNews(res.data || []);
     } catch (err) {
-      showNotification(err.response?.data || 'Ошибка создания новости', 'error');
+      showNotification(err.response?.data || 'Ошибка при сохранении новости', 'error');
     } finally {
       setLoading(false);
     }
@@ -776,13 +802,28 @@ const TmaAdmin = () => {
       {/* === NEWS & DEVELOPMENT IDEAS TAB === */}
       {activeTab === 'news' && (
         <div className="flex flex-col gap-6">
-          {/* Create News Form */}
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/80 shadow-sm">
-            <h3 className="font-bold text-sm text-slate-800 dark:text-white mb-3 flex items-center gap-2">
-              <Plus size={16} className="text-orange-500" />
-              Опубликовать новость / идею развития
-            </h3>
-            <form onSubmit={handleCreateNews} className="flex flex-col gap-3">
+          {/* Create / Edit News Form */}
+          <div className={`bg-white dark:bg-slate-800 p-5 rounded-2xl border transition-all shadow-sm ${
+            editingNewsId ? 'border-2 border-orange-500 ring-4 ring-orange-500/10' : 'border-slate-100 dark:border-slate-700/80'
+          }`}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2">
+                {editingNewsId ? <Edit3 size={16} className="text-orange-500" /> : <Plus size={16} className="text-orange-500" />}
+                {editingNewsId ? `Редактирование новости #${editingNewsId}` : 'Опубликовать новость / идею развития'}
+              </h3>
+              {editingNewsId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEditNews}
+                  className="text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center gap-1 transition"
+                >
+                  <XCircle size={14} />
+                  Отмена
+                </button>
+              )}
+            </div>
+
+            <form onSubmit={handleSaveNews} className="flex flex-col gap-3">
               <div>
                 <label className="text-[11px] font-bold text-slate-400 block mb-1">Заголовок</label>
                 <input
@@ -818,13 +859,24 @@ const TmaAdmin = () => {
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-[0_4px_14px_0_rgba(249,115,22,0.39)] transition-all disabled:opacity-50 text-xs mt-1"
-              >
-                {loading ? 'Публикация...' : 'Опубликовать для голосования'}
-              </button>
+              <div className="flex items-center gap-2 mt-1">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-[0_4px_14px_0_rgba(249,115,22,0.39)] transition-all disabled:opacity-50 text-xs"
+                >
+                  {loading ? 'Сохранение...' : editingNewsId ? 'Сохранить изменения' : 'Опубликовать для голосования'}
+                </button>
+                {editingNewsId && (
+                  <button
+                    type="button"
+                    onClick={handleCancelEditNews}
+                    className="py-3 px-4 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-xl text-xs hover:bg-slate-200 dark:hover:bg-slate-600 transition"
+                  >
+                    Отмена
+                  </button>
+                )}
+              </div>
             </form>
           </div>
 
@@ -843,14 +895,25 @@ const TmaAdmin = () => {
                   <span className="text-[11px] text-slate-400 font-semibold">
                     {new Date(item.created_at).toLocaleDateString('ru-RU')}
                   </span>
-                  <button
-                    onClick={() => handleDeleteNews(item.id)}
-                    disabled={loading}
-                    className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition"
-                    title="Удалить новость"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleStartEditNews(item)}
+                      disabled={loading}
+                      className="text-orange-500 hover:text-orange-700 p-1.5 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/30 transition flex items-center gap-1 text-xs font-bold"
+                      title="Редактировать новость"
+                    >
+                      <Edit3 size={15} />
+                      <span>Изменить</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteNews(item.id)}
+                      disabled={loading}
+                      className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition"
+                      title="Удалить новость"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="font-bold text-sm text-slate-800 dark:text-white">

@@ -76,6 +76,8 @@ func SetupRouter(pool *pgxpool.Pool, botToken string) http.Handler {
 	adminMux.Handle("DELETE /api/admin/shop", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(adminHandler.DeleteShopItem)))
 	adminMux.Handle("POST /api/admin/feedback/status", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(adminHandler.UpdateFeedbackStatus)))
 	adminMux.Handle("POST /api/admin/news", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(newsHandler.CreateNews)))
+	adminMux.Handle("PUT /api/admin/news", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(newsHandler.UpdateNews)))
+	adminMux.Handle("POST /api/admin/news/update", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(newsHandler.UpdateNews)))
 	adminMux.Handle("DELETE /api/admin/news", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(newsHandler.DeleteNews)))
 
 	// Mount TMA routes to main mux

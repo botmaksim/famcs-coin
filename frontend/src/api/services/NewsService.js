@@ -23,5 +23,6 @@ export const NewsService = {
     });
   },
   createNews: (data) => apiClient.post('/admin/news', data),
+  updateNews: (data) => apiClient.put('/admin/news', data),
   deleteNews: (id) => apiClient.delete(`/admin/news?id=${id}`),
 };

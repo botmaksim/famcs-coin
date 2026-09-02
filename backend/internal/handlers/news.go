@@ -104,6 +104,32 @@ func (h *NewsHandler) CreateNews(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(item)
 }
 
+func (h *NewsHandler) UpdateNews(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ID       int     `json:"id"`
+		Title    string  `json:"title"`
+		Content  string  `json:"content"`
+		ImageURL *string `json:"image_url"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID <= 0 {
+		http.Error(w, "Invalid input or ID", http.StatusBadRequest)
+		return
+	}
+	if strings.TrimSpace(req.Title) == "" || strings.TrimSpace(req.Content) == "" {
+		http.Error(w, "Title and content required", http.StatusBadRequest)
+		return
+	}
+
+	item, err := h.newsRepo.UpdateNews(r.Context(), req.ID, req.Title, req.Content, req.ImageURL)
+	if err != nil {
+		http.Error(w, "Failed to update news", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(item)
+}
+
 func (h *NewsHandler) DeleteNews(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Query().Get("id")
 	id, err := strconv.Atoi(idStr)

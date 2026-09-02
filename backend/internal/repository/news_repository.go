@@ -12,6 +12,7 @@ import (
 type NewsRepository interface {
 	GetNews(ctx context.Context, voterID string) ([]models.NewsItem, error)
 	CreateNews(ctx context.Context, title, content string, imageURL *string) (*models.NewsItem, error)
+	UpdateNews(ctx context.Context, id int, title, content string, imageURL *string) (*models.NewsItem, error)
 	DeleteNews(ctx context.Context, id int) error
 	VoteNews(ctx context.Context, newsID int, voterID, voteType string) (likes int, dislikes int, userVote *string, err error)
 }
@@ -68,6 +69,29 @@ func (r *newsRepository) CreateNews(ctx context.Context, title, content string, 
 	`
 	var item models.NewsItem
 	err := r.db.QueryRow(ctx, query, title, content, imageURL).Scan(
+		&item.ID,
+		&item.Title,
+		&item.Content,
+		&item.ImageURL,
+		&item.LikesCount,
+		&item.DislikesCount,
+		&item.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func (r *newsRepository) UpdateNews(ctx context.Context, id int, title, content string, imageURL *string) (*models.NewsItem, error) {
+	query := `
+		UPDATE news
+		SET title = $1, content = $2, image_url = $3
+		WHERE id = $4
+		RETURNING id, title, content, image_url, likes_count, dislikes_count, created_at
+	`
+	var item models.NewsItem
+	err := r.db.QueryRow(ctx, query, title, content, imageURL, id).Scan(
 		&item.ID,
 		&item.Title,
 		&item.Content,
