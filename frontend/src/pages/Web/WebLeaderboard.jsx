@@ -81,7 +81,7 @@ const WebLeaderboard = () => {
             </div>
             <img
               src={getMedal(rank - 1)}
-              className={`absolute ${medalSize[rank]} left-1/2 -translate-x-1/2 rounded-full shadow-lg drop-shadow-md z-20 object-contain`}
+              className={`absolute ${medalSize[rank]} left-1/2 -translate-x-1/2 z-20 object-contain pointer-events-none`}
               alt=""
               onError={(e) => {
                 const fallback = `/medal_${rank === 1 ? 'gold' : rank === 2 ? 'silver' : 'bronze'}.jpg`;
