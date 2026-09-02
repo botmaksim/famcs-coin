@@ -1,11 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from '../../context/UserContext';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Volume2, VolumeX } from 'lucide-react';
+import { Trophy, Volume2, VolumeX, Sun, Moon } from 'lucide-react';
 
 const TmaHeader = () => {
   const { user, soundEnabled, toggleSound } = useUser();
   const navigate = useNavigate();
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains('dark'));
+  }, []);
+
+  const toggleTheme = () => {
+    if (isDark) {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      setIsDark(false);
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+      setIsDark(true);
+    }
+  };
 
   return (
     <div className="flex justify-between items-center px-5 py-4 bg-[var(--card-bg)] border-b border-[var(--glass-border)] backdrop-blur-md sticky top-0 z-50">
@@ -37,12 +54,23 @@ const TmaHeader = () => {
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <button onClick={toggleSound} className="p-2 rounded-full bg-orange-50 dark:bg-slate-800 text-orange-500 hover:opacity-80 transition cursor-pointer">
+        <button 
+          onClick={toggleTheme} 
+          className="p-2 rounded-full bg-orange-50 dark:bg-slate-800 text-orange-500 hover:opacity-80 transition cursor-pointer"
+          title={isDark ? "Светлая тема" : "Тёмная тема"}
+        >
+          {isDark ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
+        <button 
+          onClick={toggleSound} 
+          className="p-2 rounded-full bg-orange-50 dark:bg-slate-800 text-orange-500 hover:opacity-80 transition cursor-pointer"
+          title={soundEnabled ? "Выключить звук" : "Включить звук"}
+        >
           {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
         </button>
-        <div className="flex items-center gap-1.5 font-bold text-orange-500 text-lg bg-orange-50 dark:bg-slate-800/50 px-3 py-1 rounded-full shadow-sm ml-2">
+        <div className="flex items-center gap-1.5 font-bold text-orange-500 text-lg bg-orange-50 dark:bg-slate-800/50 px-3 py-1 rounded-full shadow-sm ml-1">
           <img src="/famcscoin.png" alt="coin" className="w-5 h-5 object-contain" /> 
-          {user?.balance ? Math.floor(user.balance) : 0}
+          {user?.balance ? Math.floor(user.balance).toLocaleString('ru-RU') : 0}
         </div>
       </div>
     </div>
