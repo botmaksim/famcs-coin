@@ -3,7 +3,7 @@ import { BetsService } from '../../api/services/BetsService';
 import { useUser } from '../../context/UserContext';
 import { useToast } from '../../context/ToastContext';
 import { Skeleton } from '../../components/Skeleton';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Clock, CheckCircle2, Trophy } from 'lucide-react';
 
 const OPTION_COLORS = [
   {
@@ -60,6 +60,64 @@ const OPTION_COLORS = [
 
 const getOptionColor = (index) => {
   return OPTION_COLORS[index % OPTION_COLORS.length];
+};
+
+const formatClosesAt = (closesAtStr, status) => {
+  if (!closesAtStr) return null;
+  const date = new Date(closesAtStr);
+  if (isNaN(date.getTime())) return null;
+
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+  const isPast = diffMs <= 0;
+
+  const dateFormatted = date.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  if (status === 'resolved') {
+    return {
+      text: `Завершено (${dateFormatted})`,
+      timeLeft: null,
+      badge: 'Завершено',
+      type: 'resolved',
+      isPast: true,
+    };
+  }
+
+  if (isPast || status === 'closed') {
+    return {
+      text: `Приём ставок закрыт (${dateFormatted})`,
+      timeLeft: null,
+      badge: 'Приём закрыт',
+      type: 'closed',
+      isPast: true,
+    };
+  }
+
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHours / 24);
+  const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  let timeLeftStr = '';
+  if (diffDays > 0) {
+    timeLeftStr = `${diffDays} дн. ${diffHours % 24} ч.`;
+  } else if (diffHours > 0) {
+    timeLeftStr = `${diffHours} ч. ${diffMins} мин.`;
+  } else {
+    timeLeftStr = `${Math.max(1, diffMins)} мин.`;
+  }
+
+  return {
+    text: `Закрытие: ${dateFormatted}`,
+    timeLeft: `Осталось: ${timeLeftStr}`,
+    badge: 'Открыто',
+    type: 'open',
+    isPast: false,
+  };
 };
 
 const Bets = () => {
@@ -178,7 +236,11 @@ const Bets = () => {
             const currentAmount = betAmounts[bet.id] || "";
             const userBetOptIdx = bet.user_bet_option_index ?? bet.user_bet_option;
             const hasUserBet = bet.user_bet_amount > 0 && userBetOptIdx !== undefined && userBetOptIdx !== null;
-            const isOpen = bet.status === 'open';
+            
+            const timeInfo = formatClosesAt(bet.closes_at, bet.status);
+            const isPast = timeInfo?.isPast ?? false;
+            const isOpen = bet.status === 'open' && !isPast;
+            const winningOptionIdx = bet.winning_option_index ?? bet.winning_option;
 
             return (
               <div 
@@ -186,23 +248,61 @@ const Bets = () => {
                 className="bg-white dark:bg-slate-800/90 rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-slate-700/80 flex flex-col"
               >
                 {/* Event Title & Details */}
-                <div className="flex justify-between items-start gap-2 mb-1.5">
+                <div className="flex justify-between items-start gap-2 mb-2">
                   <h3 className="font-bold text-base text-slate-800 dark:text-white leading-snug">
                     {bet.title}
                   </h3>
-                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${
-                    isOpen 
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
-                      : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
-                  }`}>
-                    {isOpen ? 'Открыто' : 'Завершено'}
-                  </span>
+                  {isOpen ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wide bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 shrink-0">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Открыто
+                    </span>
+                  ) : bet.status === 'resolved' ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wide bg-purple-100 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 shrink-0">
+                      <CheckCircle2 size={12} />
+                      Итоги подведены
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 shrink-0">
+                      <Clock size={12} />
+                      Приём закрыт
+                    </span>
+                  )}
                 </div>
 
                 {bet.description && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 leading-relaxed">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-2.5 leading-relaxed">
                     {bet.description}
                   </p>
+                )}
+
+                {/* Prominent Closing Time & Countdown Bar */}
+                {timeInfo && (
+                  <div className={`flex items-center justify-between text-xs px-3 py-2 rounded-xl mb-3 border ${
+                    isOpen 
+                      ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-300'
+                      : bet.status === 'resolved'
+                      ? 'bg-purple-50/60 dark:bg-purple-950/20 border-purple-200/50 dark:border-purple-900/40 text-purple-800 dark:text-purple-300'
+                      : 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-900/40 text-amber-800 dark:text-amber-300'
+                  }`}>
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <Clock size={13} className="shrink-0" />
+                      <span>{timeInfo.text}</span>
+                    </div>
+                    {timeInfo.timeLeft && (
+                      <span className="font-extrabold text-[11px] bg-white/80 dark:bg-slate-800/80 px-2 py-0.5 rounded-md shadow-xs">
+                        {timeInfo.timeLeft}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* If resolved, show winner announcement badge */}
+                {bet.status === 'resolved' && winningOptionIdx !== null && winningOptionIdx !== undefined && (
+                  <div className="mb-3.5 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-200">
+                    <Trophy size={16} className="text-amber-500 shrink-0" />
+                    <span>Победивший вариант: «{bet.options?.[winningOptionIdx] || `Вариант ${winningOptionIdx + 1}`}»</span>
+                  </div>
                 )}
 
                 {/* Existing User Bet Banner */}
