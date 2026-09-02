@@ -15,16 +15,16 @@ func TestUserRepository_GetLeaderboard_Errors(t *testing.T) {
 	defer mock.Close()
 	repo := NewUserRepository(mock)
 
-	mock.ExpectQuery("SELECT tg_id").
+	mock.ExpectQuery("SELECT u.tg_id.*").
 		WithArgs(10).
 		WillReturnError(errors.New("db err"))
-	_, err := repo.GetLeaderboard(context.Background(), 10, "balance")
+	_, err := repo.GetLeaderboard(context.Background(), 10, "balance", "all")
 	assert.Error(t, err)
 
-	mock.ExpectQuery("SELECT tg_id").
+	mock.ExpectQuery("SELECT u.tg_id.*").
 		WithArgs(10).
 		WillReturnRows(mock.NewRows([]string{"tg_id", "username"}).AddRow(int64(1), "test"))
-	users, err := repo.GetLeaderboard(context.Background(), 10, "balance")
+	users, err := repo.GetLeaderboard(context.Background(), 10, "balance", "all")
 	assert.NoError(t, err)
 	assert.Len(t, users, 0)
 }

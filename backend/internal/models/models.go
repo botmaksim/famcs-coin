@@ -15,8 +15,11 @@ type User struct {
 	MaxEnergy       int        `json:"max_energy"`
 	PassiveIncome   float64    `json:"passive_income"`
 	IsHidden        bool       `json:"is_hidden"`
+	LastEnergyRefill time.Time `json:"last_energy_refill"`
 	LastActiveAt    *time.Time `json:"last_active_at,omitempty"`
 	CreatedAt       time.Time  `json:"created_at"`
+	BetsWon         int        `json:"bets_won,omitempty"`
+	BetsProfit      float64    `json:"bets_profit,omitempty"`
 }
 
 type Upgrade struct {

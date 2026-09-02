@@ -24,11 +24,16 @@ func (h *LeaderboardHandler) GetLeaderboard(w http.ResponseWriter, r *http.Reque
 	}
 
 	sortBy := r.URL.Query().Get("sort")
-	if sortBy != "income" {
+	if sortBy != "income" && sortBy != "bets_won" && sortBy != "bets_profit" {
 		sortBy = "balance" // default
 	}
 
-	users, err := h.userRepo.GetLeaderboard(r.Context(), limit, sortBy)
+	period := r.URL.Query().Get("period")
+	if period != "month" {
+		period = "all"
+	}
+
+	users, err := h.userRepo.GetLeaderboard(r.Context(), limit, sortBy, period)
 	if err != nil {
 		http.Error(w, "Failed to get leaderboard", http.StatusInternalServerError)
 		return

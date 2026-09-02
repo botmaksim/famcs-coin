@@ -6,12 +6,13 @@ const Leaderboard = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('balance');
+  const [period, setPeriod] = useState('all');
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        const res = await LeaderboardService.getLeaderboard(sortBy);
+        const res = await LeaderboardService.getLeaderboard(sortBy, period);
         setUsers(res.data || []);
       } catch (err) {
         console.error("Failed to fetch leaderboard", err);
@@ -20,7 +21,7 @@ const Leaderboard = () => {
       }
     };
     fetchUsers();
-  }, [sortBy]);
+  }, [sortBy, period]);
 
   const top3 = users.slice(0, 3);
   const rest = users.slice(3);
@@ -33,7 +34,6 @@ const Leaderboard = () => {
   };
 
   const getPodiumOrder = (top3Array) => {
-    // We want visually [2nd, 1st, 3rd] on the podium
     if (top3Array.length === 0) return [];
     if (top3Array.length === 1) return [null, top3Array[0], null];
     if (top3Array.length === 2) return [top3Array[1], top3Array[0], null];
@@ -41,21 +41,19 @@ const Leaderboard = () => {
   };
 
   const podiumUsers = getPodiumOrder(top3);
+
+  const renderValue = (u) => {
+    if (sortBy === 'income') return `+${Math.floor(u.passive_income)}/ч`;
+    if (sortBy === 'bets_won') return `${u.bets_won || 0} шт.`;
+    if (sortBy === 'bets_profit') return `+${Math.floor(u.bets_profit || 0).toLocaleString()}`;
+    return Math.floor(u.balance).toLocaleString();
+  };
   
   const renderPodiumItem = (user, rank) => {
     if (!user) return <div className="w-1/3" />;
     
-    const heightMap = {
-      1: 'h-40',
-      2: 'h-32',
-      3: 'h-28'
-    };
-    
-    const medalSize = {
-      1: 'w-16 h-16 -top-8',
-      2: 'w-12 h-12 -top-6',
-      3: 'w-10 h-10 -top-5'
-    };
+    const heightMap = { 1: 'h-40', 2: 'h-32', 3: 'h-28' };
+    const medalSize = { 1: 'w-16 h-16 -top-8', 2: 'w-12 h-12 -top-6', 3: 'w-10 h-10 -top-5' };
 
     return (
       <div className="w-1/3 flex flex-col items-center justify-end relative">
@@ -79,12 +77,11 @@ const Leaderboard = () => {
             {user.custom_name || user.username}
           </div>
           <div className="text-[10px] font-bold text-orange-500 flex items-center justify-center gap-0.5 mt-0.5">
-            <img src="/famcscoin.png" className="w-3 h-3" />
-            {sortBy === 'balance' ? Math.floor(user.balance).toLocaleString() : `+${Math.floor(user.passive_income)}/ч`}
+            {sortBy !== 'bets_won' && <img src="/famcscoin.png" className="w-3 h-3" />}
+            {renderValue(user)}
           </div>
         </motion.div>
         
-        {/* The Pedestal Block */}
         <motion.div 
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: 'auto', opacity: 1 }}
@@ -100,24 +97,42 @@ const Leaderboard = () => {
   return (
     <div className="flex flex-col h-full overflow-y-auto overflow-x-hidden pb-24">
       <div className="p-5 pb-0 sticky top-0 z-40 bg-[var(--card-bg)]/90 backdrop-blur-md">
-        <div className="flex items-center gap-3 mb-4">
-          <img src="/icon_leaderboard.png" alt="Топ" className="w-8 h-8 object-contain drop-shadow-sm" />
-          <h2 className="text-2xl font-black text-slate-800 dark:text-white m-0">Топ игроков</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <img src="/icon_leaderboard.png" alt="Топ" className="w-8 h-8 object-contain drop-shadow-sm" />
+            <h2 className="text-2xl font-black text-slate-800 dark:text-white m-0">Топ</h2>
+          </div>
+          <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl">
+            <button 
+              onClick={() => setPeriod('all')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${period === 'all' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'}`}
+            >
+              За всё время
+            </button>
+            <button 
+              onClick={() => setPeriod('month')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${period === 'month' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'}`}
+            >
+              Месяц
+            </button>
+          </div>
         </div>
         
-        <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl mb-4">
-          <button 
-            onClick={() => setSortBy('balance')}
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${sortBy === 'balance' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'}`}
-          >
-            По балансу
-          </button>
-          <button 
-            onClick={() => setSortBy('income')}
-            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${sortBy === 'income' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'}`}
-          >
-            По доходу
-          </button>
+        <div className="flex overflow-x-auto gap-2 pb-3 snap-x scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+          {[
+            { id: 'balance', label: 'По балансу' },
+            { id: 'income', label: 'По доходу' },
+            { id: 'bets_won', label: 'Угаданные ставки' },
+            { id: 'bets_profit', label: 'Профит со ставок' }
+          ].map(opt => (
+            <button 
+              key={opt.id}
+              onClick={() => setSortBy(opt.id)}
+              className={`whitespace-nowrap px-4 py-2 text-sm font-bold rounded-xl transition-all snap-start ${sortBy === opt.id ? 'bg-orange-500 text-white shadow-[0_4px_14px_0_rgba(249,115,22,0.39)]' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -125,16 +140,14 @@ const Leaderboard = () => {
          <div className="text-center py-20 font-medium text-slate-500">Загрузка...</div>
       ) : (
         <div className="px-5">
-          {/* Podium for Top 3 */}
           {top3.length > 0 && (
-            <div className="flex items-end justify-center h-56 mb-8 mt-6">
+            <div className="flex items-end justify-center h-56 mb-8 mt-2">
               {renderPodiumItem(podiumUsers[0], 2)}
               {renderPodiumItem(podiumUsers[1], 1)}
               {renderPodiumItem(podiumUsers[2], 3)}
             </div>
           )}
 
-          {/* List for Rest */}
           <div className="flex flex-col gap-3">
             <AnimatePresence>
               {rest?.map((u, i) => (
@@ -155,8 +168,8 @@ const Leaderboard = () => {
                   </div>
                   <div className="flex-1 font-bold dark:text-white truncate text-sm">{u.custom_name || u.username}</div>
                   <div className="flex items-center gap-1.5 text-orange-500 font-bold text-sm bg-orange-50 dark:bg-slate-900/50 px-2 py-1 rounded-lg">
-                    <img src="/famcscoin.png" className="w-4 h-4" />
-                    {sortBy === 'balance' ? Math.floor(u.balance).toLocaleString() : `+${Math.floor(u.passive_income)}/ч`}
+                    {sortBy !== 'bets_won' && <img src="/famcscoin.png" className="w-4 h-4" />}
+                    {renderValue(u)}
                   </div>
                 </motion.div>
               ))}
