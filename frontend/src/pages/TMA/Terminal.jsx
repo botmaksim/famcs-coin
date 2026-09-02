@@ -161,13 +161,14 @@ const Terminal = () => {
               ))}
             </AnimatePresence>
             <motion.div
-              whileTap={{ scale: 0.94, rotate: (Math.random() - 0.5) * 5 }}
+              whileTap={{ scale: 0.94 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
             >
               <img 
                 src="/famcscoin.png" 
                 alt="TAP" 
-                className="w-64 h-64 object-cover rounded-full shadow-[0_0_40px_rgba(249,115,22,0.3)] border-4 border-orange-500/20 select-none"
+                draggable={false}
+                className="w-64 h-64 object-cover rounded-full shadow-[0_0_40px_rgba(249,115,22,0.3)] border-4 border-orange-500/20 select-none pointer-events-none"
               />
             </motion.div>
         </div>
