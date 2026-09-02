@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 
 const WebInfo = () => {
   return (
@@ -43,7 +44,7 @@ const WebInfo = () => {
         {/* Section 3: Legal Disclaimer */}
         <section className="bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-900/50 p-6 rounded-xl mb-8 shadow-sm backdrop-blur-md">
           <h2 className="mt-0 text-red-600 dark:text-red-400 border-b border-red-200 dark:border-red-900/50 pb-2.5 font-bold text-2xl flex items-center">
-            <span className="text-2xl mr-2">⚠️</span> Смарт-контракт и Юридический Отказ от Ответственности
+            <AlertTriangle size={24} className="mr-2.5 flex-shrink-0" /> Смарт-контракт и Юридический Отказ от Ответственности
           </h2>
           <p className="text-slate-700 dark:text-slate-300 my-4 text-lg">
             <strong className="text-red-700 dark:text-red-400">ВНИМАНИЕ:</strong> FAMCS Coin является <strong className="text-red-700 dark:text-red-400">исключительно образовательным проектом</strong> и виртуальной игрой. 
