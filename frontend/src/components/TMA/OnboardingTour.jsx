@@ -8,6 +8,7 @@ export const OnboardingTour = () => {
     const hasSeenTour = localStorage.getItem('hasSeenTour');
     if (!hasSeenTour) {
       setRun(true);
+      localStorage.setItem('hasSeenTour', 'true');
     }
   }, []);
 

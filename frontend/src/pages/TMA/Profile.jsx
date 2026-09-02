@@ -32,13 +32,18 @@ const Profile = () => {
       </h2>
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center gap-3 mb-6">
-        <div className="w-20 h-20 bg-orange-100 dark:bg-orange-500/20 text-orange-500 rounded-full flex items-center justify-center text-4xl font-black shadow-inner">
-          {user?.username?.[0]?.toUpperCase() || 'U'}
+        <div className="w-20 h-20 bg-orange-100 dark:bg-orange-500/20 text-orange-500 rounded-full flex items-center justify-center text-4xl font-black shadow-inner overflow-hidden">
+          {user?.avatar_url ? (
+            <img src={user.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+          ) : (
+            user?.username?.[0]?.toUpperCase() || 'U'
+          )}
         </div>
-        <div className="text-xl font-bold text-slate-800 dark:text-white">
+        <div className="text-xl font-bold text-slate-800 dark:text-white mt-1">
           @{user?.username}
         </div>
-        <div className="text-sm font-medium px-3 py-1 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400">
+        <p className="text-xs text-slate-400 -mt-2">Аватарка подтягивается из Telegram</p>
+        <div className="text-sm font-medium px-3 py-1 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400 mt-2">
           Роль: {user?.role}
         </div>
       </div>

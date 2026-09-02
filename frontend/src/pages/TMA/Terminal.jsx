@@ -142,15 +142,16 @@ const Terminal = () => {
       {/* Main Clicker Area */}
       <div className="flex justify-center items-center flex-col mb-12">
         <div 
-          className="tap-button relative cursor-pointer active:scale-95 transition-transform select-none touch-none" 
+          className="tap-button relative cursor-pointer select-none touch-none" 
           onPointerDown={handlePointerDown}
         >
             <AnimatePresence>
               {clicks?.map((click) => (
                 <motion.div
                   key={click.id}
-                  initial={{ opacity: 1, y: click.y - 10, x: click.x - 20, scale: 0.8 }}
-                  animate={{ opacity: 0, y: click.y - 120, scale: 1.5 }}
+                  style={{ left: click.x, top: click.y }}
+                  initial={{ opacity: 1, y: 0, x: "-50%", scale: 0.8 }}
+                  animate={{ opacity: 0, y: -100, scale: 1.5 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
                   className="absolute text-4xl font-black text-orange-500 drop-shadow-[0_2px_10px_rgba(255,255,255,0.8)] dark:text-orange-400 pointer-events-none select-none z-10"
@@ -184,7 +185,7 @@ const Terminal = () => {
                 <img src={item.image_url.startsWith('/') ? item.image_url : `/${item.image_url}`} alt={item.title} className="w-16 h-16 rounded-xl object-cover" onError={(e) => { e.target.src = '/famcscoin.png'; }} />
                 <div className="flex-1">
                   <h4 className="font-bold text-slate-800 dark:text-slate-100">{item.title}</h4>
-                  <p className="text-xs text-slate-500 mb-2 line-clamp-1">{item.description}</p>
+                  <p className="text-xs text-slate-500 mb-2 line-clamp-3">{item.description}</p>
                   <div className="flex gap-3 text-xs font-medium">
                     <span className="text-orange-500 flex items-center gap-1">
                       <img src="/famcscoin.png" className="w-3 h-3 rounded-full" /> {Math.floor(item.price).toLocaleString()}
