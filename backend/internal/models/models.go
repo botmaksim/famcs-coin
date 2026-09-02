@@ -92,3 +92,14 @@ type Feedback struct {
 	Status      string    `json:"status"`
 	CreatedAt   time.Time `json:"created_at"`
 }
+
+type NewsItem struct {
+	ID            int       `json:"id"`
+	Title         string    `json:"title"`
+	Content       string    `json:"content"`
+	ImageURL      *string   `json:"image_url,omitempty"`
+	LikesCount    int       `json:"likes_count"`
+	DislikesCount int       `json:"dislikes_count"`
+	UserVote      *string   `json:"user_vote,omitempty"` // 'like', 'dislike', or nil
+	CreatedAt     time.Time `json:"created_at"`
+}

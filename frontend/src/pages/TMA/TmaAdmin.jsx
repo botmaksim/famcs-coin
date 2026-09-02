@@ -5,15 +5,22 @@ import { AdminService } from '../../api/services/AdminService';
 import { BetsService } from '../../api/services/BetsService';
 import { ShopService } from '../../api/services/ShopService';
 import { FeedbackService } from '../../api/services/FeedbackService';
-import { ArrowLeft, Plus, Trash2, CheckCircle, Shield, AlertCircle, MessageSquare, Search, Check, X, Clock, RefreshCw } from 'lucide-react';
+import { NewsService } from '../../api/services/NewsService';
+import { ArrowLeft, Plus, Trash2, CheckCircle, Shield, AlertCircle, MessageSquare, Search, Check, X, Clock, RefreshCw, Newspaper, ThumbsUp, ThumbsDown } from 'lucide-react';
 
 const TmaAdmin = () => {
   const { user } = useUser();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState('bets'); // 'bets' | 'shop' | 'feedback'
+  const [activeTab, setActiveTab] = useState('bets'); // 'bets' | 'shop' | 'feedback' | 'news'
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
+
+  // News State
+  const [adminNews, setAdminNews] = useState([]);
+  const [newsTitle, setNewsTitle] = useState('');
+  const [newsContent, setNewsContent] = useState('');
+  const [newsImage, setNewsImage] = useState('');
 
   // Bets State
   const [bets, setBets] = useState([]);
@@ -42,16 +49,58 @@ const TmaAdmin = () => {
 
   const loadData = async () => {
     try {
-      const [betsRes, shopRes, feedbackRes] = await Promise.all([
+      const [betsRes, shopRes, feedbackRes, newsRes] = await Promise.all([
         BetsService.getActiveBets(),
         ShopService.getItems(),
-        FeedbackService.getFeedback().catch(() => ({ data: [] }))
+        FeedbackService.getFeedback().catch(() => ({ data: [] })),
+        NewsService.getNews().catch(() => ({ data: [] }))
       ]);
       setBets(betsRes.data || []);
       setShopItems(shopRes.data || []);
       setFeedbacks(feedbackRes.data || []);
+      setAdminNews(newsRes.data || []);
     } catch (err) {
       console.error('Failed to load admin data', err);
+    }
+  };
+
+  const handleCreateNews = async (e) => {
+    e.preventDefault();
+    if (!newsTitle.trim() || !newsContent.trim()) {
+      showNotification('Заполните заголовок и текст новости', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      await NewsService.createNews({
+        title: newsTitle.trim(),
+        content: newsContent.trim(),
+        image_url: newsImage.trim() || null
+      });
+      showNotification('Новость успешно опубликована!');
+      setNewsTitle('');
+      setNewsContent('');
+      setNewsImage('');
+      const res = await NewsService.getNews();
+      setAdminNews(res.data || []);
+    } catch (err) {
+      showNotification(err.response?.data || 'Ошибка создания новости', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteNews = async (id) => {
+    if (!window.confirm('Удалить эту новость?')) return;
+    setLoading(true);
+    try {
+      await NewsService.deleteNews(id);
+      showNotification('Новость удалена');
+      setAdminNews(prev => prev.filter(item => item.id !== id));
+    } catch (err) {
+      showNotification('Ошибка при удалении новости', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -262,6 +311,19 @@ const TmaAdmin = () => {
           {feedbacks.length > 0 && (
             <span className="px-1.5 py-0.2 bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 rounded-full text-[10px]">
               {feedbacks.length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('news')}
+          className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === 'news' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'
+          }`}
+        >
+          Новости
+          {adminNews.length > 0 && (
+            <span className="px-1.5 py-0.2 bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 rounded-full text-[10px]">
+              {adminNews.length}
             </span>
           )}
         </button>
@@ -705,6 +767,116 @@ const TmaAdmin = () => {
             {feedbacks.length === 0 && (
               <div className="text-center py-12 text-slate-400 text-xs font-medium bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
                 Пока нет ни одного отзыва
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* === NEWS & DEVELOPMENT IDEAS TAB === */}
+      {activeTab === 'news' && (
+        <div className="flex flex-col gap-6">
+          {/* Create News Form */}
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/80 shadow-sm">
+            <h3 className="font-bold text-sm text-slate-800 dark:text-white mb-3 flex items-center gap-2">
+              <Plus size={16} className="text-orange-500" />
+              Опубликовать новость / идею развития
+            </h3>
+            <form onSubmit={handleCreateNews} className="flex flex-col gap-3">
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block mb-1">Заголовок</label>
+                <input
+                  type="text"
+                  value={newsTitle}
+                  onChange={(e) => setNewsTitle(e.target.value)}
+                  placeholder="Например: Добавим клановые войны?"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block mb-1">Описание и детали</label>
+                <textarea
+                  value={newsContent}
+                  onChange={(e) => setNewsContent(e.target.value)}
+                  placeholder="Подробно опишите планируемый функционал..."
+                  rows={4}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white resize-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block mb-1">URL изображения (необязательно)</label>
+                <input
+                  type="text"
+                  value={newsImage}
+                  onChange={(e) => setNewsImage(e.target.value)}
+                  placeholder="https://... или /image.png"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 dark:text-white"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-[0_4px_14px_0_rgba(249,115,22,0.39)] transition-all disabled:opacity-50 text-xs mt-1"
+              >
+                {loading ? 'Публикация...' : 'Опубликовать для голосования'}
+              </button>
+            </form>
+          </div>
+
+          {/* List of News */}
+          <div className="flex flex-col gap-3">
+            <h4 className="font-bold text-xs text-slate-400 uppercase tracking-wider px-1">
+              Опубликованные новости ({adminNews.length})
+            </h4>
+
+            {adminNews.map((item) => (
+              <div
+                key={item.id}
+                className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/80 shadow-sm flex flex-col gap-2.5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400 font-semibold">
+                    {new Date(item.created_at).toLocaleDateString('ru-RU')}
+                  </span>
+                  <button
+                    onClick={() => handleDeleteNews(item.id)}
+                    disabled={loading}
+                    className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition"
+                    title="Удалить новость"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+
+                <div className="font-bold text-sm text-slate-800 dark:text-white">
+                  {item.title}
+                </div>
+
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-3">
+                  {item.content}
+                </p>
+
+                <div className="flex items-center gap-3 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-xs">
+                  <div className="flex items-center gap-1 text-emerald-600 font-bold">
+                    <ThumbsUp size={13} />
+                    <span>{item.likes_count}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-rose-600 font-bold">
+                    <ThumbsDown size={13} />
+                    <span>{item.dislikes_count}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {adminNews.length === 0 && (
+              <div className="text-center py-10 text-slate-400 text-xs font-medium bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                Новостей пока нет. Создайте первую новость выше!
               </div>
             )}
           </div>

@@ -38,6 +38,7 @@ const WebNavbar = () => {
       <div className="flex items-center gap-7">
         <Link to="/info" className="text-slate-600 dark:text-slate-300 hover:text-orange-500 font-medium transition-colors">Информация</Link>
         <Link to="/leaderboard" className="text-slate-600 dark:text-slate-300 hover:text-orange-500 font-medium transition-colors">Рейтинг</Link>
+        <Link to="/news" className="text-slate-600 dark:text-slate-300 hover:text-orange-500 font-medium transition-colors">Новости</Link>
         <a 
           href={`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'famcs_coin_bot'}/app`} 
           target="_blank" 

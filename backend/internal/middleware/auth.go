@@ -276,3 +276,21 @@ func WebAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 		})
 	}
 }
+
+// OptionalAuthMiddleware extracts tg_id if present without rejecting unauthenticated requests
+func OptionalAuthMiddleware(botToken string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			if strings.HasPrefix(authHeader, "tma ") {
+				initData := strings.TrimPrefix(authHeader, "tma ")
+				isValid, userID, _, _ := validateInitData(initData, botToken)
+				if isValid && userID > 0 {
+					ctx := context.WithValue(r.Context(), "tg_id", userID)
+					r = r.WithContext(ctx)
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}

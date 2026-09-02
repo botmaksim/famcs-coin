@@ -18,6 +18,7 @@ func SetupRouter(pool *pgxpool.Pool, botToken string) http.Handler {
 	shopRepo := repository.NewShopRepository(pool)
 	betRepo := repository.NewBetRepository(pool)
 	feedbackRepo := repository.NewFeedbackRepository(pool)
+	newsRepo := repository.NewNewsRepository(pool)
 
 	// Initialize Handlers
 	userHandler := handlers.NewUserHandler(userRepo)
@@ -27,6 +28,7 @@ func SetupRouter(pool *pgxpool.Pool, botToken string) http.Handler {
 	adminHandler := handlers.NewAdminHandler(userRepo, betRepo, shopRepo, feedbackRepo)
 	betHandler := handlers.NewBetHandler(betRepo)
 	feedbackHandler := handlers.NewFeedbackHandler(feedbackRepo)
+	newsHandler := handlers.NewNewsHandler(newsRepo, userRepo)
 
 	// Public Routes
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
@@ -73,6 +75,8 @@ func SetupRouter(pool *pgxpool.Pool, botToken string) http.Handler {
 	adminMux.Handle("POST /api/admin/shop", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(adminHandler.CreateShopItem)))
 	adminMux.Handle("DELETE /api/admin/shop", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(adminHandler.DeleteShopItem)))
 	adminMux.Handle("POST /api/admin/feedback/status", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(adminHandler.UpdateFeedbackStatus)))
+	adminMux.Handle("POST /api/admin/news", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(newsHandler.CreateNews)))
+	adminMux.Handle("DELETE /api/admin/news", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(newsHandler.DeleteNews)))
 
 	// Mount TMA routes to main mux
 	mux.Handle("/api/user/", tmaAuth(protectedMux))
@@ -88,6 +92,11 @@ func SetupRouter(pool *pgxpool.Pool, botToken string) http.Handler {
 	// Public Web routes (No Auth required for reading leaderboards and polls)
 	mux.HandleFunc("GET /api/web/leaderboard", leaderboardHandler.GetLeaderboard)
 	mux.HandleFunc("GET /api/web/feedbacks", feedbackHandler.GetFeedbacks)
+
+	// News / Development Ideas routes (Accessible on Web & TMA with optional auth)
+	optionalAuth := middleware.OptionalAuthMiddleware(botToken)
+	mux.Handle("GET /api/news", optionalAuth(http.HandlerFunc(newsHandler.GetNews)))
+	mux.Handle("POST /api/news/vote", optionalAuth(http.HandlerFunc(newsHandler.VoteNews)))
 
 	return middleware.LoggerMiddleware(middleware.CORSMiddleware(mux))
 }

@@ -26,6 +26,7 @@ const WebInfo = lazy(() => import('./pages/Web/WebInfo'));
 const WebAdmin = lazy(() => import('./pages/Web/WebAdmin'));
 const WebLeaderboard = lazy(() => import('./pages/Web/WebLeaderboard'));
 const WebFeedback = lazy(() => import('./pages/Web/WebFeedback'));
+const WebNews = lazy(() => import('./pages/Web/WebNews'));
 
 const FallbackComponent = ({ error, resetErrorBoundary }) => (
   <div className="flex flex-col items-center justify-center min-h-screen p-5 text-center bg-slate-50 dark:bg-slate-900 font-sans">
@@ -115,6 +116,7 @@ function App() {
               <Route path="/" element={<WebLayout><WebLanding /></WebLayout>} />
               <Route path="/info" element={<WebLayout><WebInfo /></WebLayout>} />
               <Route path="/leaderboard" element={<WebLayout><WebLeaderboard /></WebLayout>} />
+              <Route path="/news" element={<WebLayout><WebNews /></WebLayout>} />
               <Route path="/admin-panel" element={<WebLayout><WebAdmin /></WebLayout>} />
               
               <Route path="/app/*" element={
