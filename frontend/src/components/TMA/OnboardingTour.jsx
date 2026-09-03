@@ -15,7 +15,7 @@ export const OnboardingTour = () => {
   const steps = [
     {
       target: '.tma-container',
-      content: 'Добро пожаловать в FAMCS Coin! Давай пройдем короткое обучение.',
+      content: 'Добро пожаловать в FAMCS Coin! Наш веб-сайт: coin.mybsu.online. Давай пройдем короткое обучение.',
       placement: 'center',
       disableBeacon: true,
     },
