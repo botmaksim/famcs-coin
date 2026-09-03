@@ -516,45 +516,47 @@ const TmaAdmin = () => {
       )}
 
       {/* Tabs */}
-      <div className="flex bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl mb-6 overflow-x-auto no-scrollbar gap-1">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-800/60 rounded-2xl mb-6 shadow-xs">
         <button
           onClick={() => setActiveTab('bets')}
-          className={`flex-1 min-w-[62px] py-2.5 text-xs font-bold rounded-lg transition-all ${
-            activeTab === 'bets' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'
+          className={`py-2.5 px-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            activeTab === 'bets' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
           }`}
         >
-          Ставки
+          <span>Ставки</span>
         </button>
         <button
           onClick={() => setActiveTab('shop')}
-          className={`flex-1 min-w-[62px] py-2.5 text-xs font-bold rounded-lg transition-all ${
-            activeTab === 'shop' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'
+          className={`py-2.5 px-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            activeTab === 'shop' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
           }`}
         >
-          Магазин
+          <span>Магазин</span>
         </button>
         <button
           onClick={() => setActiveTab('feedback')}
-          className={`flex-1 min-w-[62px] py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'feedback' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'
+          className={`py-2.5 px-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            activeTab === 'feedback' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
           }`}
         >
-          Отзывы
+          <MessageSquare size={13} />
+          <span>Отзывы</span>
           {feedbacks.length > 0 && (
-            <span className="px-1.5 py-0.2 bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 rounded-full text-[10px]">
+            <span className="px-1.5 py-0.2 bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 rounded-full text-[10px] font-bold">
               {feedbacks.length}
             </span>
           )}
         </button>
         <button
           onClick={() => setActiveTab('news')}
-          className={`flex-1 min-w-[62px] py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'news' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'
+          className={`py-2.5 px-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            activeTab === 'news' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
           }`}
         >
-          Новости
+          <Newspaper size={13} />
+          <span>Новости</span>
           {adminNews.length > 0 && (
-            <span className="px-1.5 py-0.2 bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 rounded-full text-[10px]">
+            <span className="px-1.5 py-0.2 bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 rounded-full text-[10px] font-bold">
               {adminNews.length}
             </span>
           )}
@@ -565,11 +567,11 @@ const TmaAdmin = () => {
               setActiveTab('roles');
               fetchUsers(userSearch);
             }}
-            className={`flex-1 min-w-[62px] py-2.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1 ${
-              activeTab === 'roles' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-600 dark:text-purple-400'
+            className={`col-span-2 sm:col-span-4 md:col-span-1 py-2.5 px-2 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'roles' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-600 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-950/30 hover:bg-purple-100'
             }`}
           >
-            <Users size={12} />
+            <Users size={13} />
             <span>Роли</span>
           </button>
         )}
