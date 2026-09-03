@@ -112,6 +112,10 @@ func TestBetRepository_CloseBet(t *testing.T) {
 		WithArgs(int64(123), 100.0).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
+	mock.ExpectExec("^UPDATE user_bets SET payout = 0 WHERE event_id = \\$1 AND option_index != \\$2$").
+		WithArgs(1, 0).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+
 	mock.ExpectCommit()
 
 	err = repo.CloseBet(context.Background(), 1, 0)

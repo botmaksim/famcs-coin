@@ -30,13 +30,17 @@ func (r *betRepository) GetBets(ctx context.Context, userID int64) ([]models.Bet
 	query := `
 		SELECT 
 			e.id, e.title, e.description, e.options, e.status, e.closes_at, e.winning_option_index, e.created_at,
-			ub.option_index, ub.amount
+			ub.option_index, ub.amount, ub.payout
 		FROM bet_events e
 		LEFT JOIN (
-			SELECT DISTINCT ON (event_id) event_id, option_index, amount
+			SELECT 
+				event_id, 
+				MAX(option_index) as option_index, 
+				SUM(amount) as amount, 
+				SUM(COALESCE(payout, 0)) as payout
 			FROM user_bets
 			WHERE user_id = $1
-			ORDER BY event_id, created_at DESC
+			GROUP BY event_id
 		) ub ON e.id = ub.event_id
 		ORDER BY e.created_at DESC
 	`
@@ -50,7 +54,7 @@ func (r *betRepository) GetBets(ctx context.Context, userID int64) ([]models.Bet
 	for rows.Next() {
 		var b models.BetEvent
 		var optionsRaw []byte
-		if err := rows.Scan(&b.ID, &b.Title, &b.Description, &optionsRaw, &b.Status, &b.ClosesAt, &b.WinningOption, &b.CreatedAt, &b.UserBetOption, &b.UserBetAmount); err != nil {
+		if err := rows.Scan(&b.ID, &b.Title, &b.Description, &optionsRaw, &b.Status, &b.ClosesAt, &b.WinningOption, &b.CreatedAt, &b.UserBetOption, &b.UserBetAmount, &b.UserBetPayout); err != nil {
 			log.Println("Error scanning bet:", err)
 			continue
 		}
@@ -206,6 +210,14 @@ func (r *betRepository) CloseBet(ctx context.Context, eventID int, winningOption
 			_, err = tx.Exec(ctx, `INSERT INTO transactions (user_id, amount, type) VALUES ($1, $2, 'bet_payout')`, w.UserID, payout)
 			if err != nil { return err }
 		}
+
+		// Explicitly set payout = 0 for losing bets
+		_, err = tx.Exec(ctx, `UPDATE user_bets SET payout = 0 WHERE event_id = $1 AND option_index != $2`, eventID, winningOption)
+		if err != nil { return err }
+	} else {
+		// If nobody won, all bets have 0 payout
+		_, err = tx.Exec(ctx, `UPDATE user_bets SET payout = 0 WHERE event_id = $1`, eventID)
+		if err != nil { return err }
 	}
 
 	return tx.Commit(ctx)

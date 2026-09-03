@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { UserService } from '../api/services/UserService';
 import { useUserStore } from '../store/useUserStore';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 export const UserContext = createContext(null);
 
@@ -24,9 +25,8 @@ export const UserProvider = ({ children }) => {
     }
   }, [setLocalUser]);
 
-  useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
+  // Automatically refresh profile on mount, route/tab switch, and window/app focus
+  useAutoRefresh(fetchProfile);
 
   // Smooth real-time energy refill (+3 per second) up to max_energy
   useEffect(() => {
@@ -70,7 +70,15 @@ export const UserProvider = ({ children }) => {
 export const useUser = () => {
   const ctx = useContext(UserContext);
   if (!ctx) {
-    throw new Error('useUser must be used within UserProvider');
+    return {
+      user: null,
+      loading: false,
+      error: null,
+      fetchProfile: async () => {},
+      updateLocalUser: () => {},
+      soundEnabled: true,
+      toggleSound: () => {},
+    };
   }
   return ctx;
 };

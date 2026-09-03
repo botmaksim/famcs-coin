@@ -19,6 +19,7 @@ type UserRepository interface {
 	GetLeaderboard(ctx context.Context, limit int, sortBy string, period string) ([]models.User, error)
 	UpdateBalance(ctx context.Context, tx pgx.Tx, userID int64, amount float64, txType string) error
 	ProcessClick(ctx context.Context, userID int64, coins float64, energyCost int) (float64, int, error)
+	SearchUsers(ctx context.Context, query string, limit int) ([]models.User, error)
 }
 
 type userRepository struct {
@@ -116,8 +117,8 @@ func (r *userRepository) GetLeaderboard(ctx context.Context, limit int, sortBy s
 	query := fmt.Sprintf(`
 		SELECT 
 			u.tg_id, u.username, COALESCE(u.first_name, ''), u.custom_name, u.avatar_url, u.balance, u.passive_income,
-			COUNT(CASE WHEN e.status = 'resolved' AND ub.payout > ub.amount THEN 1 END) as bets_won,
-			COALESCE(SUM(CASE WHEN e.status = 'resolved' THEN ub.payout - ub.amount ELSE 0 END), 0) as bets_profit
+			COUNT(CASE WHEN e.status = 'resolved' AND ub.option_index = e.winning_option_index THEN 1 END) as bets_won,
+			COALESCE(SUM(CASE WHEN e.status = 'resolved' THEN COALESCE(ub.payout, 0) - ub.amount ELSE 0 END), 0) as bets_profit
 		FROM users u
 		LEFT JOIN user_bets ub ON u.tg_id = ub.user_id %s
 		LEFT JOIN bet_events e ON ub.event_id = e.id
@@ -228,4 +229,61 @@ func (r *userRepository) ProcessClick(ctx context.Context, userID int64, coins f
 	}
 
 	return balance, currentEnergy, nil
+}
+
+func (r *userRepository) SearchUsers(ctx context.Context, search string, limit int) ([]models.User, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+
+	var rows pgx.Rows
+	var err error
+
+	if search != "" {
+		pattern := "%" + search + "%"
+		sql := `
+			SELECT tg_id, username, COALESCE(first_name, ''), custom_name, avatar_url, role, balance, energy, max_energy, passive_income, is_hidden, created_at
+			FROM users
+			WHERE username ILIKE $1 OR first_name ILIKE $1 OR custom_name ILIKE $1 OR CAST(tg_id AS TEXT) ILIKE $1
+			ORDER BY 
+				CASE role 
+					WHEN 'superadmin' THEN 1 
+					WHEN 'admin' THEN 2 
+					ELSE 3 
+				END, 
+				balance DESC
+			LIMIT $2
+		`
+		rows, err = r.db.Query(ctx, sql, pattern, limit)
+	} else {
+		sql := `
+			SELECT tg_id, username, COALESCE(first_name, ''), custom_name, avatar_url, role, balance, energy, max_energy, passive_income, is_hidden, created_at
+			FROM users
+			ORDER BY 
+				CASE role 
+					WHEN 'superadmin' THEN 1 
+					WHEN 'admin' THEN 2 
+					ELSE 3 
+				END, 
+				balance DESC
+			LIMIT $1
+		`
+		rows, err = r.db.Query(ctx, sql, limit)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []models.User
+	for rows.Next() {
+		var u models.User
+		if err := rows.Scan(&u.TgID, &u.Username, &u.FirstName, &u.CustomName, &u.AvatarURL, &u.Role, &u.Balance, &u.Energy, &u.MaxEnergy, &u.PassiveIncome, &u.IsHidden, &u.CreatedAt); err != nil {
+			log.Println("Error scanning user row in SearchUsers:", err)
+			continue
+		}
+		users = append(users, u)
+	}
+	return users, nil
 }

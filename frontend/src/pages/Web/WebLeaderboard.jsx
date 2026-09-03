@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { LeaderboardService } from '../../api/services/LeaderboardService';
 import { Trophy, TrendingUp, Award, DollarSign } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useUser } from '../../context/UserContext';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 const WebLeaderboard = () => {
+  const { fetchProfile } = useUser();
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('balance'); // 'balance' | 'income' | 'bets_won' | 'bets_profit'
   const [period, setPeriod] = useState('all'); // 'all' | 'month'
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
     try {
       const res = await LeaderboardService.getWebLeaderboard(sortBy, period);
@@ -19,11 +22,14 @@ const WebLeaderboard = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchLeaderboard();
   }, [sortBy, period]);
+
+  const refreshLeaderboard = useCallback(() => {
+    fetchLeaderboard();
+    fetchProfile?.();
+  }, [fetchLeaderboard, fetchProfile]);
+
+  useAutoRefresh(refreshLeaderboard);
 
   const top3 = players.slice(0, 3);
   const rest = players.slice(3);
@@ -48,40 +54,45 @@ const WebLeaderboard = () => {
     if (!u) return '';
     if (sortBy === 'income') return `+${Math.floor(u.passive_income).toLocaleString('ru-RU')}/ч`;
     if (sortBy === 'bets_won') return `${u.bets_won || 0} шт.`;
-    if (sortBy === 'bets_profit') return `+${Math.floor(u.bets_profit || 0).toLocaleString('ru-RU')}`;
+    if (sortBy === 'bets_profit') {
+      const p = Math.floor(u.bets_profit || 0);
+      if (p > 0) return `+${p.toLocaleString('ru-RU')}`;
+      if (p < 0) return `-${Math.abs(p).toLocaleString('ru-RU')}`;
+      return '0';
+    }
     return Math.floor(u.balance).toLocaleString('ru-RU');
   };
 
   const renderPodiumItem = (player, rank) => {
     if (!player) return <div key={rank} className="w-1/3" />;
-
-    const heightMap = { 1: 'h-48', 2: 'h-36', 3: 'h-28' };
-    const medalSize = { 1: 'w-16 h-16 -top-8', 2: 'w-12 h-12 -top-6', 3: 'w-11 h-11 -top-5' };
+    
+    const heightPixelMap = { 1: 130, 2: 95, 3: 70 };
+    const medalSize = { 1: 'w-16 h-16 -top-8', 2: 'w-12 h-12 -top-6', 3: 'w-10 h-10 -top-5' };
     const borderGlow = {
-      1: 'ring-4 ring-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.3)]',
-      2: 'ring-4 ring-slate-300 shadow-[0_0_20px_rgba(203,213,225,0.3)]',
-      3: 'ring-4 ring-amber-700 shadow-[0_0_15px_rgba(180,83,9,0.3)]'
+      1: 'ring-4 ring-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.35)]',
+      2: 'ring-4 ring-slate-300 shadow-[0_0_15px_rgba(203,213,225,0.3)]',
+      3: 'ring-4 ring-amber-700 shadow-[0_0_12px_rgba(180,83,9,0.3)]'
     };
 
     return (
       <div key={rank} className="w-1/3 flex flex-col items-center justify-end relative">
-        <motion.div
+        <motion.div 
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 + (rank * 0.1) }}
-          className="flex flex-col items-center z-10 mb-3"
+          transition={{ duration: 0.5, delay: 0.3 + (rank * 0.1) }}
+          className="flex flex-col items-center z-10 mb-2"
         >
           <div className="relative">
-            <div className={`rounded-full bg-orange-100 dark:bg-orange-950/40 flex items-center justify-center font-bold text-orange-500 overflow-hidden shadow-lg ${borderGlow[rank]} ${rank === 1 ? 'w-24 h-24 text-3xl' : rank === 2 ? 'w-20 h-20 text-2xl' : 'w-16 h-16 text-xl'}`}>
+            <div className={`rounded-full bg-orange-100 dark:bg-orange-950/40 flex items-center justify-center font-bold text-orange-500 overflow-hidden ${borderGlow[rank]} ${rank === 1 ? 'w-20 h-20 text-2xl' : rank === 2 ? 'w-16 h-16 text-xl' : 'w-14 h-14 text-lg'}`}>
               {player.avatar_url ? (
-                <img src={player.avatar_url} alt="" className="w-full h-full object-cover" />
+                 <img src={player.avatar_url} alt="" className="w-full h-full object-cover" />
               ) : (
-                (player.custom_name || player.username || 'U').charAt(0).toUpperCase()
+                 (player.custom_name || player.first_name || player.username || 'U').charAt(0).toUpperCase()
               )}
             </div>
-            <img
-              src={getMedal(rank - 1)}
-              className={`absolute ${medalSize[rank]} left-1/2 -translate-x-1/2 z-20 object-contain pointer-events-none`}
+            <img 
+              src={getMedal(rank-1)} 
+              className={`absolute ${medalSize[rank]} left-1/2 -translate-x-1/2 z-20 object-contain pointer-events-none`} 
               alt=""
               onError={(e) => {
                 const fallback = `/medal_${rank === 1 ? 'gold' : rank === 2 ? 'silver' : 'bronze'}.jpg`;
@@ -93,32 +104,29 @@ const WebLeaderboard = () => {
               }}
             />
           </div>
-
-          <div className="font-bold text-sm mt-3 text-slate-800 dark:text-white text-center w-full truncate px-2">
-            {player.custom_name || `@${player.username}`}
+          <div className="font-bold text-xs mt-2 text-slate-800 dark:text-white text-center w-full truncate px-1">
+            {player.custom_name || player.first_name || player.username || 'Студент'}
           </div>
-
-          <div className="text-xs font-bold text-orange-500 flex items-center justify-center gap-1 mt-1 bg-orange-50 dark:bg-slate-800/80 px-3 py-0.5 rounded-full">
+          <div className="text-[10px] font-bold text-orange-500 flex items-center justify-center gap-0.5 mt-0.5">
             {sortBy !== 'bets_won' && (
-              <img
-                src="/famcscoin.png"
+              <img 
+                src="/famcscoin.png" 
                 alt=""
-                className="w-3.5 h-3.5 object-contain"
+                className="w-3 h-3 object-contain" 
                 onError={(e) => { e.target.src = '/famcscoin.jpg'; }}
               />
             )}
-            <span>{renderValue(player)}</span>
+            {renderValue(player)}
           </div>
         </motion.div>
-
-        {/* Podium Step */}
-        <motion.div
+        
+        <motion.div 
           initial={{ height: 0 }}
-          animate={{ height: 'auto' }}
-          transition={{ duration: 0.5, delay: rank * 0.15, type: 'spring' }}
-          className={`w-full bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-2xl ${heightMap[rank]} shadow-[inset_0_4px_12px_rgba(255,255,255,0.3)] flex justify-center pt-3`}
+          animate={{ height: heightPixelMap[rank] }}
+          transition={{ duration: 0.5, delay: rank * 0.15, type: "spring" }}
+          className="w-full bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-2xl shadow-[inset_0_4px_10px_rgba(255,255,255,0.3)] flex justify-center pt-2.5 overflow-hidden"
         >
-          <span className="text-white/90 font-black text-3xl drop-shadow-md">#{rank}</span>
+           <span className="text-white/90 font-black text-2xl drop-shadow-sm">#{rank}</span>
         </motion.div>
       </div>
     );
@@ -254,7 +262,9 @@ const WebLeaderboard = () => {
                           return `${item.bets_won || 0} шт.`;
                         case 'bets_profit': {
                           const profit = Math.floor(item.bets_profit || 0);
-                          return (profit >= 0 ? `+` : ``) + profit.toLocaleString('ru-RU');
+                          if (profit > 0) return `+${profit.toLocaleString('ru-RU')}`;
+                          if (profit < 0) return `-${Math.abs(profit).toLocaleString('ru-RU')}`;
+                          return '0';
                         }
                         default:
                           return '—';
@@ -274,11 +284,11 @@ const WebLeaderboard = () => {
                             {item.avatar_url ? (
                               <img src={item.avatar_url} alt="" className="w-full h-full object-cover" />
                             ) : (
-                              (item.custom_name || item.username || 'U').charAt(0).toUpperCase()
+                              (item.custom_name || item.first_name || item.username || 'U').charAt(0).toUpperCase()
                             )}
                           </div>
                           <div className="font-bold text-slate-800 dark:text-white text-sm truncate max-w-[150px]">
-                            {item.custom_name || `@${item.username}`}
+                            {item.custom_name || item.first_name || item.username || 'Студент'}
                           </div>
                         </td>
 

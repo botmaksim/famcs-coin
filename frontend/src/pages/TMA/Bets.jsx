@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BetsService } from '../../api/services/BetsService';
 import { useUser } from '../../context/UserContext';
 import { useToast } from '../../context/ToastContext';
 import { Skeleton } from '../../components/Skeleton';
 import { TrendingUp, Clock, CheckCircle2, Trophy } from 'lucide-react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 const OPTION_COLORS = [
   {
@@ -131,7 +132,7 @@ const Bets = () => {
   // Amount per bet event: { [eventId]: string }
   const [betAmounts, setBetAmounts] = useState({});
 
-  const fetchBets = async () => {
+  const fetchBets = useCallback(async () => {
     try {
       const res = await BetsService.getActiveBets();
       // Ensure strict deduplication by ID
@@ -155,11 +156,14 @@ const Bets = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchBets();
   }, []);
+
+  const refreshBets = useCallback(() => {
+    fetchBets();
+    fetchProfile?.();
+  }, [fetchBets, fetchProfile]);
+
+  useAutoRefresh(refreshBets);
 
   const handleSelectOption = (eventId, optionIndex) => {
     const bet = bets.find(b => b.id === eventId);
@@ -250,56 +254,64 @@ const Bets = () => {
             const isPast = timeInfo?.isPast ?? false;
             const isOpen = bet.status === 'open' && !isPast;
             const winningOptionIdx = bet.winning_option_index ?? bet.winning_option;
+            const isResolved = bet.status === 'resolved';
+            const userWon = hasUserBet && isResolved && winningOptionIdx === userBetOptIdx;
+
+            const winningPool = (isResolved && winningOptionIdx !== null && winningOptionIdx !== undefined)
+              ? (bet.pools?.[winningOptionIdx] || 0)
+              : 0;
+
+            const payout = (bet.user_bet_payout && Number(bet.user_bet_payout) > 0)
+              ? Number(bet.user_bet_payout)
+              : (userWon && winningPool > 0
+                ? (bet.user_bet_amount / winningPool) * totalPool
+                : (userWon ? bet.user_bet_amount : 0));
+
+            const profit = isResolved ? (userWon ? payout - bet.user_bet_amount : -bet.user_bet_amount) : 0;
 
             return (
               <div 
                 key={bet.id} 
-                className="bg-white dark:bg-slate-800/90 rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-slate-700/80 flex flex-col"
+                className="bg-white dark:bg-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-xs border border-slate-100 dark:border-slate-700/60 flex flex-col"
               >
                 {/* Event Title & Details */}
-                <div className="flex justify-between items-start gap-2 mb-2">
+                <div className="flex justify-between items-start gap-2 mb-1.5">
                   <h3 className="font-bold text-base text-slate-800 dark:text-white leading-snug">
                     {bet.title}
                   </h3>
                   {isOpen ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wide bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 shrink-0">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/50 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       Открыто
                     </span>
                   ) : bet.status === 'resolved' ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wide bg-purple-100 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 shrink-0">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400 border border-purple-200/50 dark:border-purple-800/50 shrink-0">
                       <CheckCircle2 size={12} />
-                      Итоги подведены
+                      Итоги
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 shrink-0">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/50 shrink-0">
                       <Clock size={12} />
-                      Приём закрыт
+                      Закрыто
                     </span>
                   )}
                 </div>
 
                 {bet.description && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-2.5 leading-relaxed">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 leading-relaxed">
                     {bet.description}
                   </p>
                 )}
 
-                {/* Prominent Closing Time & Countdown Bar */}
+                {/* Subtle Meta Time Line */}
                 {timeInfo && (
-                  <div className={`flex items-center justify-between text-xs px-3 py-2 rounded-xl mb-3 border ${
-                    isOpen 
-                      ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-300'
-                      : bet.status === 'resolved'
-                      ? 'bg-purple-50/60 dark:bg-purple-950/20 border-purple-200/50 dark:border-purple-900/40 text-purple-800 dark:text-purple-300'
-                      : 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-900/40 text-amber-800 dark:text-amber-300'
-                  }`}>
+                  <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-400 mb-3 pt-0.5">
                     <div className="flex items-center gap-1.5 font-medium">
-                      <Clock size={13} className="shrink-0" />
+                      <Clock size={12} className="text-slate-400 shrink-0" />
                       <span>{timeInfo.text}</span>
                     </div>
                     {timeInfo.timeLeft && (
-                      <span className="font-extrabold text-[11px] bg-white/80 dark:bg-slate-800/80 px-2 py-0.5 rounded-md shadow-xs">
+                      <span className="font-bold text-[11px] text-orange-500 dark:text-orange-400">
                         {timeInfo.timeLeft}
                       </span>
                     )}
@@ -308,25 +320,73 @@ const Bets = () => {
 
                 {/* If resolved, show winner announcement badge */}
                 {bet.status === 'resolved' && winningOptionIdx !== null && winningOptionIdx !== undefined && (
-                  <div className="mb-3.5 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-200">
-                    <Trophy size={16} className="text-amber-500 shrink-0" />
-                    <span>Победивший вариант: «{bet.options?.[winningOptionIdx] || `Вариант ${winningOptionIdx + 1}`}»</span>
+                  <div className="mb-3 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-200">
+                    <Trophy size={15} className="text-amber-500 shrink-0" />
+                    <span>Победил исход: «{bet.options?.[winningOptionIdx] || `Вариант ${winningOptionIdx + 1}`}»</span>
                   </div>
                 )}
 
                 {/* Existing User Bet Banner */}
                 {hasUserBet && (
-                  <div className="mb-3.5 p-3 rounded-2xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200/80 dark:border-orange-800/50 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2.5 h-2.5 rounded-full ${getOptionColor(userBetOptIdx).dot}`} />
-                      <span className="text-xs font-bold text-orange-600 dark:text-orange-400">
-                        Ваша ставка: {Math.floor(bet.user_bet_amount).toLocaleString()} FC на «{bet.options?.[userBetOptIdx] || 'Выбранный вариант'}»
+                  isResolved ? (
+                    userWon ? (
+                      <div className="mb-3.5 p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 flex items-center justify-between shadow-xs">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300">
+                            <Trophy size={14} className="text-emerald-500" />
+                            <span>Ставка сыграла! Вы выиграли</span>
+                          </div>
+                          <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                            Поставили лично: <strong className="text-slate-800 dark:text-white">{Math.floor(bet.user_bet_amount).toLocaleString()} FC</strong> на «{bet.options?.[userBetOptIdx]}»
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                            {profit >= 0 ? `+${Math.floor(profit).toLocaleString()}` : `-${Math.floor(Math.abs(profit)).toLocaleString()}`} FC
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-600/80 dark:text-emerald-400/80">
+                            Профит (выплата: {Math.floor(payout).toLocaleString()} FC)
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mb-3.5 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex items-center justify-between shadow-xs">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5 text-xs font-black text-rose-600 dark:text-rose-400">
+                            <span>Ставка не сыграла</span>
+                          </div>
+                          <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                            Поставили лично: <strong className="text-slate-800 dark:text-white">{Math.floor(bet.user_bet_amount).toLocaleString()} FC</strong> на «{bet.options?.[userBetOptIdx]}»
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className="text-sm font-black text-rose-500 dark:text-rose-400">
+                            -{Math.floor(Math.abs(profit)).toLocaleString()} FC
+                          </span>
+                          <span className="text-[10px] font-bold text-rose-500/80 dark:text-rose-400/80">
+                            Профит (потеряно)
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <div className="mb-3.5 p-3 rounded-2xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200/80 dark:border-orange-800/50 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2.5 h-2.5 rounded-full ${getOptionColor(userBetOptIdx).dot}`} />
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-orange-600 dark:text-orange-400">
+                            Вы поставили лично: {Math.floor(bet.user_bet_amount).toLocaleString()} FC
+                          </span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                            на исход «{bet.options?.[userBetOptIdx] || 'Выбранный вариант'}»
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-orange-200/70 text-orange-800 dark:bg-orange-900/60 dark:text-orange-300">
+                        {isOpen ? 'В игре' : 'Ожидает итогов'}
                       </span>
                     </div>
-                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-orange-200/70 text-orange-800 dark:bg-orange-900/60 dark:text-orange-300">
-                      Активна
-                    </span>
-                  </div>
+                  )
                 )}
 
                 {/* Total Bank & Progress Bar */}
@@ -407,6 +467,25 @@ const Bets = () => {
                                 </span>
                               )}
                             </div>
+                            {/* Personal bet and outcome on this option */}
+                            {isUserChoice && (
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-xs font-semibold">
+                                <span className="text-orange-600 dark:text-orange-400">
+                                  Поставили лично: {Math.floor(bet.user_bet_amount).toLocaleString()} FC
+                                </span>
+                                {isResolved && (
+                                  userWon ? (
+                                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
+                                      • Профит: {profit >= 0 ? `+${Math.floor(profit).toLocaleString()}` : `-${Math.floor(Math.abs(profit)).toLocaleString()}`} FC (выплата: {Math.floor(payout).toLocaleString()} FC)
+                                    </span>
+                                  ) : (
+                                    <span className="font-extrabold text-rose-500 dark:text-rose-400">
+                                      • Профит: -{Math.floor(Math.abs(profit)).toLocaleString()} FC
+                                    </span>
+                                  )
+                                )}
+                              </div>
+                            )}
                             {isLockedOut && (
                               <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                                 Недоступно (выбран другой исход)
@@ -434,26 +513,34 @@ const Bets = () => {
                 {isOpen ? (
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex flex-col gap-2">
                     {/* Quick Amount Chips */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
-                      <span className="text-[11px] font-semibold text-slate-400 mr-0.5 shrink-0">Ставка:</span>
-                      {[100, 500, 1000, 2500].map(val => (
+                    {Math.floor(user?.balance || 0) > 0 ? (
+                      <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+                        <span className="text-[11px] font-semibold text-slate-400 mr-0.5 shrink-0">Ставка:</span>
+                        {[100, 500, 1000, 2500]
+                          .filter(val => val <= Math.floor(user?.balance || 0))
+                          .map(val => (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => setBetAmounts(prev => ({ ...prev, [bet.id]: String(val) }))}
+                              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shrink-0 cursor-pointer"
+                            >
+                              {val.toLocaleString()}
+                            </button>
+                        ))}
                         <button
-                          key={val}
                           type="button"
-                          onClick={() => setBetAmounts(prev => ({ ...prev, [bet.id]: String(val) }))}
-                          className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shrink-0 cursor-pointer"
+                          onClick={() => setBetAmounts(prev => ({ ...prev, [bet.id]: String(Math.floor(user?.balance || 0)) }))}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold bg-orange-100 dark:bg-orange-950/50 hover:bg-orange-200 text-orange-600 dark:text-orange-400 transition shrink-0 cursor-pointer"
                         >
-                          {val.toLocaleString()}
+                          Все ({Math.floor(user?.balance || 0).toLocaleString()})
                         </button>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => setBetAmounts(prev => ({ ...prev, [bet.id]: String(Math.floor(user?.balance || 0)) }))}
-                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-orange-100 dark:bg-orange-950/50 hover:bg-orange-200 text-orange-600 dark:text-orange-400 transition shrink-0 cursor-pointer"
-                      >
-                        Все ({Math.floor(user?.balance || 0).toLocaleString()})
-                      </button>
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="text-[11px] font-semibold text-rose-500 py-1">
+                        Недостаточно коинов на балансе для ставки
+                      </div>
+                    )}
 
                     {/* Amount Input & Place Bet Button */}
                     <div className="flex items-center gap-2 mt-1">
@@ -465,7 +552,11 @@ const Bets = () => {
                           max={user?.balance || 0}
                           value={currentAmount}
                           onChange={(e) => setBetAmounts(prev => ({ ...prev, [bet.id]: e.target.value }))}
-                          className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 pr-10 text-xs outline-none focus:ring-2 focus:ring-orange-500 dark:text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none font-bold placeholder:font-normal placeholder:text-slate-400"
+                          className={`w-full bg-slate-50 dark:bg-slate-900 border rounded-xl px-3.5 py-2.5 pr-10 text-xs outline-none focus:ring-2 dark:text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none font-bold placeholder:font-normal placeholder:text-slate-400 ${
+                            Number(currentAmount) > (user?.balance || 0)
+                              ? 'border-rose-400 focus:ring-rose-500 text-rose-600 dark:text-rose-400'
+                              : 'border-slate-200 dark:border-slate-700 focus:ring-orange-500'
+                          }`}
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
                           FC
@@ -478,7 +569,9 @@ const Bets = () => {
                         disabled={selectedOptIdx === undefined || !currentAmount || Number(currentAmount) <= 0 || Number(currentAmount) > (user?.balance || 0)}
                         className="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-md transition disabled:opacity-40 disabled:pointer-events-none cursor-pointer shrink-0"
                       >
-                        {hasUserBet
+                        {Number(currentAmount) > (user?.balance || 0)
+                          ? "Недостаточно коинов"
+                          : hasUserBet
                           ? `Увеличить ставку ${currentAmount && Number(currentAmount) > 0 ? `(+${Number(currentAmount).toLocaleString()} FC)` : ''}`
                           : selectedOptIdx !== undefined
                           ? `Поставить на «${bet.options?.[selectedOptIdx]}»`

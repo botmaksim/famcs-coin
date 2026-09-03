@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FeedbackService } from '../../api/services/FeedbackService';
 import { NewsService } from '../../api/services/NewsService';
 import { useToast } from '../../context/ToastContext';
+import { useUser } from '../../context/UserContext';
 import { ThumbsUp, ThumbsDown, Sparkles, Calendar, CheckCircle, Send, Lock, Shield, Clock, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 const Feedback = () => {
+  const { fetchProfile } = useUser();
   const { showSuccess, showError } = useToast();
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,7 +26,7 @@ const Feedback = () => {
     banner: ''
   });
 
-  const fetchNews = async () => {
+  const fetchNews = useCallback(async () => {
     try {
       setLoadingNews(true);
       const [newsRes, headerRes] = await Promise.all([
@@ -39,11 +42,14 @@ const Feedback = () => {
     } finally {
       setLoadingNews(false);
     }
-  };
-
-  useEffect(() => {
-    fetchNews();
   }, []);
+
+  const refreshFeedback = useCallback(() => {
+    fetchNews();
+    fetchProfile?.();
+  }, [fetchNews, fetchProfile]);
+
+  useAutoRefresh(refreshFeedback);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

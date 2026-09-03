@@ -61,8 +61,25 @@ func (db *DB) RunMigrations(migrationPath string) error {
 	return nil
 }
 
-// RunAllMigrations reads a directory, sorts the SQL files and runs them sequentially.
+// RunAllMigrations reads a directory, sorts the SQL files and runs them sequentially,
+// tracking applied migrations in the schema_migrations table so they only run once.
 func (db *DB) RunAllMigrations(migrationsDir string) error {
+	return RunMigrationsOnPool(context.Background(), db.Pool, migrationsDir)
+}
+
+// RunMigrationsOnPool runs all pending migrations on any pool implementing PgxPoolIface.
+func RunMigrationsOnPool(ctx context.Context, pool PgxPoolIface, migrationsDir string) error {
+	// Ensure migrations tracking table exists
+	_, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			version VARCHAR(255) PRIMARY KEY,
+			applied_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);
+	`)
+	if err != nil {
+		return fmt.Errorf("unable to create schema_migrations table: %w", err)
+	}
+
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
 		return fmt.Errorf("unable to read migrations directory: %w", err)
@@ -78,13 +95,44 @@ func (db *DB) RunAllMigrations(migrationsDir string) error {
 	sort.Strings(files)
 
 	for _, file := range files {
-		migrationPath := filepath.Join(migrationsDir, file)
-		if err := db.RunMigrations(migrationPath); err != nil {
-			return err
+		var exists bool
+		err := pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = $1)", file).Scan(&exists)
+		if err != nil {
+			return fmt.Errorf("failed to check migration status for %s: %w", file, err)
 		}
+		if exists {
+			continue
+		}
+
+		migrationPath := filepath.Join(migrationsDir, file)
+		content, err := os.ReadFile(migrationPath)
+		if err != nil {
+			return fmt.Errorf("unable to read migration file %s: %w", file, err)
+		}
+
+		tx, err := pool.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("unable to start transaction for migration %s: %w", file, err)
+		}
+
+		if _, err := tx.Exec(ctx, string(content)); err != nil {
+			tx.Rollback(ctx)
+			return fmt.Errorf("unable to execute migration script %s: %w", file, err)
+		}
+
+		if _, err := tx.Exec(ctx, "INSERT INTO schema_migrations (version) VALUES ($1)", file); err != nil {
+			tx.Rollback(ctx)
+			return fmt.Errorf("unable to record migration %s: %w", file, err)
+		}
+
+		if err := tx.Commit(ctx); err != nil {
+			return fmt.Errorf("unable to commit migration %s: %w", file, err)
+		}
+
+		log.Printf("Migration executed successfully: %s\n", file)
 	}
 
-	log.Println("All migrations executed successfully")
+	log.Println("All migrations processed successfully")
 	return nil
 }
 

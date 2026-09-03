@@ -73,6 +73,7 @@ type BetEvent struct {
 	UserBetOption       *int      `json:"user_bet_option_index,omitempty"`
 	UserBetOptionCompat *int      `json:"user_bet_option,omitempty"`
 	UserBetAmount       *float64  `json:"user_bet_amount,omitempty"`
+	UserBetPayout       *float64  `json:"user_bet_payout,omitempty"`
 }
 
 type UserBet struct {

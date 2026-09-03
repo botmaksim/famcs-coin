@@ -12,8 +12,9 @@ WebApp.expand();
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false,
-      staleTime: 60 * 1000,
+      refetchOnWindowFocus: true,
+      refetchOnMount: 'always',
+      staleTime: 0,
       retry: 1,
     },
   },

@@ -69,6 +69,7 @@ func SetupRouter(pool *pgxpool.Pool, botToken string) http.Handler {
 
 	// Admin
 	adminMux := http.NewServeMux()
+	adminMux.Handle("GET /api/admin/users", middleware.RequirePermission(userRepo, "superadmin")(http.HandlerFunc(adminHandler.GetUsers)))
 	adminMux.Handle("POST /api/admin/role", middleware.RequirePermission(userRepo, "superadmin")(http.HandlerFunc(adminHandler.UpdateRole)))
 	adminMux.Handle("POST /api/admin/bets", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(adminHandler.CreateBet)))
 	adminMux.Handle("POST /api/admin/bets/close", middleware.RoleMiddleware(userRepo, "admin")(http.HandlerFunc(adminHandler.CloseBet)))

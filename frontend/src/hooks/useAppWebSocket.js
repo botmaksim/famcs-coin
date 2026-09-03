@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { useQueryClient } from '@tanstack/react-query';
+import { triggerGlobalRefresh } from './useAutoRefresh';
 
 export const useAppWebSocket = () => {
   const wsRef = useRef(null);
@@ -44,6 +45,8 @@ export const useAppWebSocket = () => {
           if (data.type === 'balance_updated' || data.type === 'payment_received') {
              queryClient.invalidateQueries({ queryKey: ['userProfile'] });
           }
+
+          triggerGlobalRefresh();
           
         } catch (err) {
           console.error('WebSocket message parse error:', err);

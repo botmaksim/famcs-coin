@@ -23,7 +23,6 @@ import WebLanding from './pages/Web/WebLanding';
 
 // Lazy Loaded Components
 const WebInfo = lazy(() => import('./pages/Web/WebInfo'));
-const WebAdmin = lazy(() => import('./pages/Web/WebAdmin'));
 const WebLeaderboard = lazy(() => import('./pages/Web/WebLeaderboard'));
 const WebFeedback = lazy(() => import('./pages/Web/WebFeedback'));
 const WebNews = lazy(() => import('./pages/Web/WebNews'));
@@ -88,7 +87,6 @@ function App() {
               <Route path="/info" element={<WebLayout><WebInfo /></WebLayout>} />
               <Route path="/leaderboard" element={<WebLayout><WebLeaderboard /></WebLayout>} />
               <Route path="/news" element={<WebLayout><WebNews /></WebLayout>} />
-              <Route path="/admin-panel" element={<WebLayout><WebAdmin /></WebLayout>} />
               
               <Route path="/app/*" element={
                 <TmaGuard>

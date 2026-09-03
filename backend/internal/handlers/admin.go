@@ -3,7 +3,9 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
+	"famcscoin-backend/internal/middleware"
 	"famcscoin-backend/internal/models"
 	"famcscoin-backend/internal/repository"
 )
@@ -24,6 +26,29 @@ func NewAdminHandler(u repository.UserRepository, b repository.BetRepository, s 
 	}
 }
 
+func (h *AdminHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	limit := 50
+	if lStr := r.URL.Query().Get("limit"); lStr != "" {
+		if l, err := strconv.Atoi(lStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
+
+	users, err := h.userRepo.SearchUsers(r.Context(), query, limit)
+	if err != nil {
+		http.Error(w, "Failed to search users", http.StatusInternalServerError)
+		return
+	}
+
+	if users == nil {
+		users = []models.User{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
+}
+
 func (h *AdminHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		TgID int64  `json:"tg_id"`
@@ -36,6 +61,13 @@ func (h *AdminHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 
 	if req.Role != "user" && req.Role != "admin" && req.Role != "superadmin" {
 		http.Error(w, "Invalid role", http.StatusBadRequest)
+		return
+	}
+
+	// Prevent self-demotion
+	requesterID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+	if ok && requesterID == req.TgID && req.Role != "superadmin" {
+		http.Error(w, "Cannot demote your own superadmin account", http.StatusBadRequest)
 		return
 	}
 

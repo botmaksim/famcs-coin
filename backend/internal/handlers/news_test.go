@@ -79,15 +79,15 @@ func TestNewsHandler_VoteNews(t *testing.T) {
 
 	t.Run("successful_vote", func(t *testing.T) {
 		voteType := "like"
-		mockNewsRepo.On("VoteNews", mock.Anything, 1, "guest:abc", "like").Return(10, 2, &voteType, nil).Once()
+		mockNewsRepo.On("VoteNews", mock.Anything, 1, "tg:12345", "like").Return(10, 2, &voteType, nil).Once()
 
 		body := map[string]interface{}{
 			"news_id":   1,
 			"vote_type": "like",
-			"voter_id":  "guest:abc",
 		}
 		jsonBytes, _ := json.Marshal(body)
 		req := httptest.NewRequest(http.MethodPost, "/api/news/vote", bytes.NewReader(jsonBytes))
+		req = req.WithContext(context.WithValue(req.Context(), "tg_id", int64(12345)))
 		rec := httptest.NewRecorder()
 
 		handler.VoteNews(rec, req)
@@ -99,15 +99,7 @@ func TestNewsHandler_VoteNews(t *testing.T) {
 		assert.Equal(t, float64(10), resp["likes_count"])
 	})
 
-	t.Run("invalid_json", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/api/news/vote", bytes.NewReader([]byte("bad json")))
-		rec := httptest.NewRecorder()
-
-		handler.VoteNews(rec, req)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-
-	t.Run("missing_voter_id", func(t *testing.T) {
+	t.Run("unauthorized_without_tg_id", func(t *testing.T) {
 		body := map[string]interface{}{
 			"news_id":   1,
 			"vote_type": "like",
@@ -117,19 +109,28 @@ func TestNewsHandler_VoteNews(t *testing.T) {
 		rec := httptest.NewRecorder()
 
 		handler.VoteNews(rec, req)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("invalid_json", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/news/vote", bytes.NewReader([]byte("bad json")))
+		req = req.WithContext(context.WithValue(req.Context(), "tg_id", int64(12345)))
+		rec := httptest.NewRecorder()
+
+		handler.VoteNews(rec, req)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("vote_on_closed_poll_error", func(t *testing.T) {
-		mockNewsRepo.On("VoteNews", mock.Anything, 2, "guest:abc", "like").Return(0, 0, nil, errors.New("голосование по этой теме уже завершено")).Once()
+		mockNewsRepo.On("VoteNews", mock.Anything, 2, "tg:12345", "like").Return(0, 0, nil, errors.New("голосование по этой теме уже завершено")).Once()
 
 		body := map[string]interface{}{
 			"news_id":   2,
 			"vote_type": "like",
-			"voter_id":  "guest:abc",
 		}
 		jsonBytes, _ := json.Marshal(body)
 		req := httptest.NewRequest(http.MethodPost, "/api/news/vote", bytes.NewReader(jsonBytes))
+		req = req.WithContext(context.WithValue(req.Context(), "tg_id", int64(12345)))
 		rec := httptest.NewRecorder()
 
 		handler.VoteNews(rec, req)
@@ -373,11 +374,78 @@ func TestNewsHandler_Header(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
-	t.Run("update_header_invalid_json", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/api/admin/news/header", bytes.NewReader([]byte("invalid")))
+	t.Run("get_header_repo_error", func(t *testing.T) {
+		mockNewsRepo.On("GetNewsHeader", mock.Anything).Return(nil, errors.New("db error")).Once()
+		req := httptest.NewRequest(http.MethodGet, "/api/news/header", nil)
 		rec := httptest.NewRecorder()
+		handler.GetNewsHeader(rec, req)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
 
+	t.Run("update_header_repo_error", func(t *testing.T) {
+		mockNewsRepo.On("UpdateNewsHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("db error")).Once()
+		req := httptest.NewRequest(http.MethodPost, "/api/admin/news/header", bytes.NewReader([]byte(`{"title":"T"}`)))
+		rec := httptest.NewRecorder()
 		handler.UpdateNewsHeader(rec, req)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 }
+
+func TestNewsHandler_ExtraBranches(t *testing.T) {
+	mockNewsRepo := new(MockNewsRepository)
+	mockUserRepo := new(MockUserRepository)
+	handler := NewNewsHandler(mockNewsRepo, mockUserRepo)
+
+	t.Run("create_news_repo_error", func(t *testing.T) {
+		mockNewsRepo.On("CreateNews", mock.Anything, "T", "C", mock.Anything, mock.Anything).Return(nil, errors.New("db error")).Once()
+		req := httptest.NewRequest(http.MethodPost, "/api/admin/news", bytes.NewReader([]byte(`{"title":"T","content":"C"}`)))
+		rec := httptest.NewRecorder()
+		handler.CreateNews(rec, req)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+
+	t.Run("update_news_invalid_json_and_error", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPut, "/api/admin/news", bytes.NewReader([]byte(`invalid`)))
+		rec := httptest.NewRecorder()
+		handler.UpdateNews(rec, req)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+		req2 := httptest.NewRequest(http.MethodPut, "/api/admin/news", bytes.NewReader([]byte(`{"id":0}`)))
+		rec2 := httptest.NewRecorder()
+		handler.UpdateNews(rec2, req2)
+		assert.Equal(t, http.StatusBadRequest, rec2.Code)
+
+		mockNewsRepo.On("UpdateNews", mock.Anything, 1, "T", "C", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("db error")).Once()
+		req3 := httptest.NewRequest(http.MethodPut, "/api/admin/news", bytes.NewReader([]byte(`{"id":1,"title":"T","content":"C"}`)))
+		rec3 := httptest.NewRecorder()
+		handler.UpdateNews(rec3, req3)
+		assert.Equal(t, http.StatusInternalServerError, rec3.Code)
+	})
+
+	t.Run("close_poll_invalid_and_error", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/admin/news/close-poll", bytes.NewReader([]byte(`invalid`)))
+		rec := httptest.NewRecorder()
+		handler.ClosePoll(rec, req)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+		req2 := httptest.NewRequest(http.MethodPost, "/api/admin/news/close-poll", bytes.NewReader([]byte(`{"id":0}`)))
+		rec2 := httptest.NewRecorder()
+		handler.ClosePoll(rec2, req2)
+		assert.Equal(t, http.StatusBadRequest, rec2.Code)
+
+		mockNewsRepo.On("ClosePoll", mock.Anything, 5, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("db error")).Once()
+		req3 := httptest.NewRequest(http.MethodPost, "/api/admin/news/close-poll", bytes.NewReader([]byte(`{"id":5}`)))
+		rec3 := httptest.NewRecorder()
+		handler.ClosePoll(rec3, req3)
+		assert.Equal(t, http.StatusInternalServerError, rec3.Code)
+	})
+
+	t.Run("delete_news_repo_error", func(t *testing.T) {
+		mockNewsRepo.On("DeleteNews", mock.Anything, 10).Return(errors.New("db error")).Once()
+		req := httptest.NewRequest(http.MethodDelete, "/api/admin/news", bytes.NewReader([]byte(`{"id":10}`)))
+		rec := httptest.NewRecorder()
+		handler.DeleteNews(rec, req)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+}
+

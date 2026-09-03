@@ -1,27 +1,34 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LeaderboardService } from '../../api/services/LeaderboardService';
+import { useUser } from '../../context/UserContext';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 const Leaderboard = () => {
+  const { fetchProfile } = useUser();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('balance');
   const [period, setPeriod] = useState('all');
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoading(true);
-        const res = await LeaderboardService.getLeaderboard(sortBy, period);
-        setUsers(res.data || []);
-      } catch (err) {
-        console.error("Failed to fetch leaderboard", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUsers();
+  const fetchUsers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await LeaderboardService.getLeaderboard(sortBy, period);
+      setUsers(res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch leaderboard", err);
+    } finally {
+      setLoading(false);
+    }
   }, [sortBy, period]);
+
+  const refreshLeaderboard = useCallback(() => {
+    fetchUsers();
+    fetchProfile?.();
+  }, [fetchUsers, fetchProfile]);
+
+  useAutoRefresh(refreshLeaderboard);
 
   const top3 = users.slice(0, 3);
   const rest = users.slice(3);
@@ -45,7 +52,12 @@ const Leaderboard = () => {
   const renderValue = (u) => {
     if (sortBy === 'income') return `+${Math.floor(u.passive_income)}/ч`;
     if (sortBy === 'bets_won') return `${u.bets_won || 0} шт.`;
-    if (sortBy === 'bets_profit') return `+${Math.floor(u.bets_profit || 0).toLocaleString()}`;
+    if (sortBy === 'bets_profit') {
+      const p = Math.floor(u.bets_profit || 0);
+      if (p > 0) return `+${p.toLocaleString()}`;
+      if (p < 0) return `-${Math.abs(p).toLocaleString()}`;
+      return '0';
+    }
     return Math.floor(u.balance).toLocaleString();
   };
   
@@ -73,7 +85,7 @@ const Leaderboard = () => {
               {user.avatar_url ? (
                  <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
               ) : (
-                 (user.custom_name || user.username || 'U').charAt(0).toUpperCase()
+                 (user.custom_name || user.first_name || user.username || 'U').charAt(0).toUpperCase()
               )}
             </div>
             <img 
@@ -91,7 +103,7 @@ const Leaderboard = () => {
             />
           </div>
           <div className="font-bold text-xs mt-2 text-slate-800 dark:text-white text-center w-full truncate px-1">
-            {user.custom_name || user.username}
+            {user.custom_name || user.first_name || user.username || 'Студент'}
           </div>
           <div className="text-[10px] font-bold text-orange-500 flex items-center justify-center gap-0.5 mt-0.5">
             {sortBy !== 'bets_won' && (
@@ -187,10 +199,10 @@ const Leaderboard = () => {
                     {u.avatar_url ? (
                        <img src={u.avatar_url} alt="avatar" className="w-full h-full object-cover" />
                     ) : (
-                       (u.custom_name || u.username || 'U').charAt(0).toUpperCase()
+                       (u.custom_name || u.first_name || u.username || 'U').charAt(0).toUpperCase()
                     )}
                   </div>
-                  <div className="flex-1 font-bold dark:text-white truncate text-sm">{u.custom_name || u.username}</div>
+                  <div className="flex-1 font-bold dark:text-white truncate text-sm">{u.custom_name || u.first_name || u.username || 'Студент'}</div>
                   <div className="flex items-center gap-1.5 text-orange-500 font-bold text-sm bg-orange-50 dark:bg-slate-900/50 px-2 py-1 rounded-lg">
                     {sortBy !== 'bets_won' && <img src="/famcscoin.png" className="w-4 h-4" />}
                     {renderValue(u)}

@@ -20,19 +20,22 @@ func (rw *responseWriter) WriteHeader(code int) {
 // LoggerMiddleware logs detailed information about each HTTP request
 func LoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip noisy high-frequency endpoints (e.g. clicker requests and health checks)
+		isHighFreq := r.URL.Path == "/api/user/click" || r.URL.Path == "/api/health" || r.URL.Path == "/api/ws"
+
 		start := time.Now()
 
 		rw := &responseWriter{ResponseWriter: w, status: http.StatusOK}
 		
-		// Attempt to extract UserID if it was added by auth middleware
-		// Note: since LoggerMiddleware usually wraps the outermost mux, auth might not have run yet.
-		// If we want to log UserID, we can log it inside the handlers, or just log the raw request here.
-		
-		log.Printf("[REQ] %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+		if !isHighFreq {
+			log.Printf("[REQ] %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+		}
 
 		next.ServeHTTP(rw, r)
 
-		duration := time.Since(start)
-		log.Printf("[RES] %s %s | Status: %d | Duration: %v", r.Method, r.URL.Path, rw.status, duration)
+		if !isHighFreq || rw.status >= 400 {
+			duration := time.Since(start)
+			log.Printf("[RES] %s %s | Status: %d | Duration: %v", r.Method, r.URL.Path, rw.status, duration)
+		}
 	})
 }

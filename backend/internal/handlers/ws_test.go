@@ -28,3 +28,10 @@ func TestServeWS(t *testing.T) {
 
 	ws.Close()
 }
+
+func TestServeWS_UpgradeError(t *testing.T) {
+	req := httptest.NewRequest("GET", "/ws", nil)
+	rec := httptest.NewRecorder()
+	ServeWS(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}

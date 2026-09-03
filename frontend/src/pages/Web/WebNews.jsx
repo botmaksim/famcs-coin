@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NewsService } from '../../api/services/NewsService';
 import { useUser } from '../../context/UserContext';
 import { 
@@ -6,9 +6,10 @@ import {
   Lock, CheckCircle, Clock, XCircle, FileText, Check, Shield, ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 const WebNews = () => {
-  const { user } = useUser();
+  const { user, fetchProfile } = useUser();
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
 
   const [news, setNews] = useState([]);
@@ -43,7 +44,7 @@ const WebNews = () => {
   const [resolveNote, setResolveNote] = useState('');
   const [resolving, setResolving] = useState(false);
 
-  const fetchNewsAndHeader = async () => {
+  const fetchNewsAndHeader = useCallback(async () => {
     try {
       setLoading(true);
       const [newsRes, headerRes] = await Promise.all([
@@ -59,11 +60,14 @@ const WebNews = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchNewsAndHeader();
   }, []);
+
+  const refreshNews = useCallback(() => {
+    fetchNewsAndHeader();
+    fetchProfile?.();
+  }, [fetchNewsAndHeader, fetchProfile]);
+
+  useAutoRefresh(refreshNews);
 
   // Header edit handlers
   const handleOpenHeaderEditor = () => {

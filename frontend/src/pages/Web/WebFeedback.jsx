@@ -40,11 +40,16 @@ const WebFeedback = () => {
           {feedbacks?.map((f, i) => (
             <div key={i} className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-transform hover:-translate-y-1">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-500/20 text-orange-500 rounded-full flex items-center justify-center font-bold">
-                  {f.username?.[0]?.toUpperCase() || 'U'}
+                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-500/20 text-orange-500 rounded-full flex items-center justify-center font-bold overflow-hidden">
+                  {(f.first_name || f.username || 'U')[0].toUpperCase()}
                 </div>
                 <div>
-                  <div className="font-bold text-slate-800 dark:text-slate-100">@{f.username}</div>
+                  <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                    <span>{f.first_name || f.username || 'Студент'}</span>
+                    {f.username && f.username !== f.first_name && (
+                      <span className="text-xs font-normal text-slate-400">@{f.username.replace(/^@/, '')}</span>
+                    )}
+                  </div>
                   <div className="text-xs text-slate-400">{new Date(f.created_at).toLocaleString('ru-RU')}</div>
                 </div>
               </div>

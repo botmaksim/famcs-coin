@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { triggerGlobalRefresh } from '../../hooks/useAutoRefresh';
 
 const navItems = [
   { path: '/app/terminal', label: 'Фарм', icon: <img src="/icon_farm.png" alt="Фарм" className="w-6 h-6 object-contain" />, className: 'nav-terminal' },
@@ -13,18 +14,29 @@ const TmaBottomNav = () => {
   const location = useLocation();
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] h-[70px] bg-[var(--card-bg)] backdrop-blur-md border-t border-[var(--glass-border)] flex justify-around items-center z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.2)]">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] h-[64px] bg-white/85 dark:bg-slate-900/85 backdrop-blur-lg border-t border-slate-200/60 dark:border-slate-800/80 flex justify-around items-center z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.04)] dark:shadow-[0_-4px_24px_rgba(0,0,0,0.25)]">
       {navItems?.map((item) => {
         const isActive = location.pathname.startsWith(item.path);
         return (
-          <div 
+          <button 
             key={item.path}
-            onClick={() => navigate(item.path)}
-            className={`flex flex-col items-center gap-1 p-2 cursor-pointer transition-all duration-200 ${item.className} ${isActive ? 'text-orange-500 scale-110' : 'text-slate-400 hover:text-orange-400'}`}
+            onClick={() => {
+              navigate(item.path);
+              triggerGlobalRefresh();
+            }}
+            className={`flex flex-col items-center justify-center gap-1 py-1 px-3.5 rounded-2xl cursor-pointer transition-all duration-150 border-none bg-transparent ${
+              isActive 
+                ? 'text-orange-500 scale-105' 
+                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+            }`}
           >
-            <span className="text-2xl drop-shadow-sm">{item.icon}</span>
-            <span className="text-[10px] font-semibold tracking-wide">{item.label}</span>
-          </div>
+            <span className="w-6 h-6 flex items-center justify-center drop-shadow-xs">
+              {item.icon}
+            </span>
+            <span className={`text-[10px] tracking-tight ${isActive ? 'font-black text-orange-500' : 'font-semibold text-slate-500 dark:text-slate-400'}`}>
+              {item.label}
+            </span>
+          </button>
         );
       })}
     </div>

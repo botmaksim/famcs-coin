@@ -2,11 +2,14 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"famcscoin-backend/internal/middleware"
 	"famcscoin-backend/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -169,3 +172,90 @@ func TestAdminHandler_Errors(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }
+
+func TestAdminHandler_GetUsers(t *testing.T) {
+	mockUserRepo := new(MockUserRepository)
+	handler := NewAdminHandler(mockUserRepo, nil, nil, nil)
+
+	t.Run("success without query", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/admin/users", nil)
+		mockUserRepo.On("SearchUsers", mock.Anything, "", 50).Return([]models.User{
+			{TgID: 100, Username: "admin1", Role: "superadmin"},
+		}, nil).Once()
+
+		w := httptest.NewRecorder()
+		handler.GetUsers(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var users []models.User
+		err := json.NewDecoder(w.Body).Decode(&users)
+		assert.NoError(t, err)
+		assert.Len(t, users, 1)
+		mockUserRepo.AssertExpectations(t)
+	})
+
+	t.Run("success with query and limit", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/admin/users?q=test&limit=10", nil)
+		mockUserRepo.On("SearchUsers", mock.Anything, "test", 10).Return([]models.User{
+			{TgID: 101, Username: "testuser", Role: "user"},
+		}, nil).Once()
+
+		w := httptest.NewRecorder()
+		handler.GetUsers(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		mockUserRepo.AssertExpectations(t)
+	})
+
+	t.Run("repo error", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/admin/users", nil)
+		mockUserRepo.On("SearchUsers", mock.Anything, "", 50).Return(nil, errors.New("db error")).Once()
+		w := httptest.NewRecorder()
+		handler.GetUsers(w, req)
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		mockUserRepo.AssertExpectations(t)
+	})
+}
+
+func TestAdminHandler_UpdateRole_SelfDemotion(t *testing.T) {
+	mockUserRepo := new(MockUserRepository)
+	handler := NewAdminHandler(mockUserRepo, nil, nil, nil)
+
+	body, _ := json.Marshal(map[string]any{"tg_id": 999, "role": "admin"})
+	req := httptest.NewRequest("POST", "/admin/role", bytes.NewBuffer(body))
+	// Inject requester ID into context
+	ctx := context.WithValue(req.Context(), middleware.UserIDKey, int64(999))
+	req = req.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	handler.UpdateRole(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Cannot demote your own superadmin account")
+}
+
+func TestAdminHandler_DeleteFeedback(t *testing.T) {
+	mockFeedbackRepo := new(MockFeedbackRepository)
+	handler := NewAdminHandler(nil, nil, nil, mockFeedbackRepo)
+
+	t.Run("success", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]any{"feedback_id": 5})
+		req := httptest.NewRequest("POST", "/admin/feedbacks/delete", bytes.NewBuffer(body))
+
+		mockFeedbackRepo.On("DeleteFeedback", mock.Anything, 5).Return(nil).Once()
+
+		w := httptest.NewRecorder()
+		handler.DeleteFeedback(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		mockFeedbackRepo.AssertExpectations(t)
+	})
+
+	t.Run("invalid json", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/admin/feedbacks/delete", bytes.NewBufferString("invalid-json"))
+		w := httptest.NewRecorder()
+		handler.DeleteFeedback(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
+

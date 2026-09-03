@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -28,27 +27,7 @@ const (
 	RoleKey   contextKey = "role"
 )
 
-// validateInitData validates the Telegram WebApp initData string
 func validateInitData(initData, botToken string) (bool, int64, string, string, string) {
-	log.Printf("[AUTH DEBUG] validateInitData called. Raw initData: %q, botToken len: %d", initData, len(botToken))
-
-	// Web Admin simple authentication using ADMIN_PANEL_PASSWORD
-	if strings.HasPrefix(initData, "web:") {
-		parts := strings.Split(initData, ":")
-		if len(parts) == 3 {
-			tgIDStr := parts[1]
-			password := parts[2]
-			expectedPassword := os.Getenv("ADMIN_PANEL_PASSWORD")
-			if expectedPassword != "" && password == expectedPassword {
-				tgID, err := strconv.ParseInt(tgIDStr, 10, 64)
-				if err == nil {
-					log.Printf("[AUTH DEBUG] Web Admin authenticated with tgID: %d", tgID)
-					return true, tgID, "admin", "Admin", ""
-				}
-			}
-		}
-	}
-
 	parsedArgs, err := url.ParseQuery(initData)
 	if err != nil {
 		log.Printf("[AUTH DEBUG] url.ParseQuery error: %v", err)
@@ -138,12 +117,8 @@ func validateInitData(initData, botToken string) (bool, int64, string, string, s
 		firstName = fmt.Sprintf("ID:%d", tgUser.ID)
 	}
 
-	username := tgUser.Username
-	if username == "" {
-		username = firstName
-	}
+	username := strings.TrimPrefix(tgUser.Username, "@")
 
-	log.Printf("[AUTH DEBUG] Validation successful for UserID: %d (username: %s, name: %s)", tgUser.ID, username, firstName)
 	return true, tgUser.ID, username, firstName, tgUser.PhotoURL
 }
 
@@ -155,7 +130,6 @@ func TMAAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 			
 			// Fallback to WebAuth logic
 			if authHeader == "" || !strings.HasPrefix(authHeader, "tma ") {
-				log.Printf("[AUTH DEBUG] Missing or non-tma header: %q. Falling back to WebAuth", authHeader)
 				webAuthFunc := WebAuthMiddleware(botToken, userRepo)(next)
 				webAuthFunc.ServeHTTP(w, r)
 				return
@@ -254,14 +228,6 @@ func WebAuthMiddleware(botToken string, userRepo repository.UserRepository) func
 					if userIDFloat, ok := claims["user_id"].(float64); ok {
 						parsedUserID = int64(userIDFloat)
 					}
-				}
-			}
-
-			// Try Web Admin Password as fallback (web:tg_id:password)
-			if parsedUserID == 0 {
-				isValid, id, _, _, _ := validateInitData(tokenStr, botToken)
-				if isValid && id != 0 {
-					parsedUserID = id
 				}
 			}
 

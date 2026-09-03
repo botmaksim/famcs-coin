@@ -57,6 +57,13 @@ func TestNewsRepository_CreateNews(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, item)
 	assert.Equal(t, 1, item.ID)
+
+	// Error case
+	mock.ExpectQuery("^INSERT INTO news").
+		WithArgs("Err", "Err", (*string)(nil), "open").
+		WillReturnError(assert.AnError)
+	_, err2 := repo.CreateNews(context.Background(), "Err", "Err", nil, "")
+	assert.Error(t, err2)
 }
 
 func TestNewsRepository_UpdateNews(t *testing.T) {
@@ -81,6 +88,13 @@ func TestNewsRepository_UpdateNews(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, item)
 	assert.Equal(t, "in_progress", item.Status)
+
+	// Error case
+	mock.ExpectQuery("^UPDATE news").
+		WithArgs("Err", "Err", (*string)(nil), "open", (*string)(nil), (*string)(nil), 2).
+		WillReturnError(assert.AnError)
+	_, err2 := repo.UpdateNews(context.Background(), 2, "Err", "Err", nil, "", nil, nil)
+	assert.Error(t, err2)
 }
 
 func TestNewsRepository_ClosePoll(t *testing.T) {
@@ -107,6 +121,13 @@ func TestNewsRepository_ClosePoll(t *testing.T) {
 	assert.NotNil(t, item)
 	assert.Equal(t, "implemented", item.Status)
 	assert.Equal(t, &verdict, item.Verdict)
+
+	// Error case
+	mock.ExpectQuery("^UPDATE news").
+		WithArgs("closed", (*string)(nil), (*string)(nil), 2).
+		WillReturnError(assert.AnError)
+	_, err2 := repo.ClosePoll(context.Background(), 2, "", nil, nil)
+	assert.Error(t, err2)
 }
 
 func TestNewsRepository_DeleteNews(t *testing.T) {

@@ -13,6 +13,7 @@ export const AdminService = {
   updateFeedbackStatus: (feedbackId, status) => apiClient.post('/admin/feedback/status', { feedback_id: parseInt(feedbackId), status }),
   deleteFeedback: (feedbackId) => apiClient.post('/admin/feedback/delete', { feedback_id: parseInt(feedbackId) }),
 
-  // Roles
+  // Roles & Users
+  getUsers: (query = '') => apiClient.get(`/admin/users?q=${encodeURIComponent(query)}`),
   updateRole: (tgId, role) => apiClient.post('/admin/role', { tg_id: parseInt(tgId), role }),
 };

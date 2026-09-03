@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
 import { AdminService } from '../../api/services/AdminService';
@@ -7,18 +7,27 @@ import { ShopService } from '../../api/services/ShopService';
 import { FeedbackService } from '../../api/services/FeedbackService';
 import { NewsService } from '../../api/services/NewsService';
 import { useToast } from '../../context/ToastContext';
-import { ArrowLeft, Plus, Trash2, CheckCircle, Shield, AlertCircle, MessageSquare, Search, Check, X, Clock, RefreshCw, Newspaper, ThumbsUp, ThumbsDown, Edit3, XCircle, FileText, Languages, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, CheckCircle, Shield, AlertCircle, MessageSquare, Search, Check, X, Clock, RefreshCw, Newspaper, ThumbsUp, ThumbsDown, Edit3, XCircle, FileText, Languages, ChevronDown, Users, Crown } from 'lucide-react';
 import { convertLayout, convertTextToRu } from '../../utils/keyboardLayout';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 const TmaAdmin = () => {
-  const { user } = useUser();
+  const { user, fetchProfile } = useUser();
   const { showSuccess, showError, showConfirm } = useToast();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState('bets'); // 'bets' | 'shop' | 'feedback' | 'news'
+  const isSuperAdmin = user?.role === 'superadmin';
+
+  const [activeTab, setActiveTab] = useState('bets'); // 'bets' | 'shop' | 'feedback' | 'news' | 'roles'
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const [forceRuLayout, setForceRuLayout] = useState(false);
+
+  // Superadmin Roles Management State
+  const [usersList, setUsersList] = useState([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [roleUpdatingId, setRoleUpdatingId] = useState(null);
 
   // News State
   const [adminNews, setAdminNews] = useState([]);
@@ -84,11 +93,53 @@ const TmaAdmin = () => {
   const [feedbackFilter, setFeedbackFilter] = useState('all'); // 'all' | 'pending' | 'approved' | 'rejected'
   const [feedbackSearch, setFeedbackSearch] = useState('');
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const fetchUsers = useCallback(async (query = '') => {
+    if (!isSuperAdmin) return;
+    try {
+      setLoadingUsers(true);
+      const res = await AdminService.getUsers(query);
+      setUsersList(res.data || []);
+    } catch (err) {
+      console.error('Failed to load users for role management', err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, [isSuperAdmin]);
 
-  const loadData = async () => {
+  const handleRoleChange = (targetUser, targetRole) => {
+    if (targetUser.tg_id === user?.tg_id) {
+      showError('Нельзя изменить роль своего собственного аккаунта');
+      return;
+    }
+
+    const roleNames = {
+      superadmin: 'Суперадмин',
+      admin: 'Администратор',
+      user: 'Студент (User)'
+    };
+    const roleName = roleNames[targetRole] || targetRole;
+    const targetLabel = targetUser.username 
+      ? `@${targetUser.username.replace(/^@/, '')}` 
+      : (targetUser.custom_name || targetUser.first_name || `ID: ${targetUser.tg_id}`);
+
+    showConfirm(
+      `Назначить роль «${roleName}» пользователю ${targetLabel}?`,
+      async () => {
+        try {
+          setRoleUpdatingId(targetUser.tg_id);
+          await AdminService.updateRole(targetUser.tg_id, targetRole);
+          showSuccess(`Роль пользователя обновлена на ${roleName}`);
+          await fetchUsers(userSearch);
+        } catch (err) {
+          showError(err.response?.data || 'Ошибка при обновлении роли');
+        } finally {
+          setRoleUpdatingId(null);
+        }
+      }
+    );
+  };
+
+  const loadData = useCallback(async () => {
     try {
       const [betsRes, shopRes, feedbackRes, newsRes, headerRes] = await Promise.all([
         BetsService.getActiveBets(),
@@ -106,10 +157,20 @@ const TmaAdmin = () => {
         setHeaderSubtitle(headerRes.data.subtitle || '');
         setHeaderBanner(headerRes.data.banner || '');
       }
+      if (isSuperAdmin) {
+        fetchUsers(userSearch);
+      }
     } catch (err) {
       console.error('Failed to load admin data', err);
     }
-  };
+  }, [isSuperAdmin, fetchUsers, userSearch]);
+
+  const refreshAdmin = useCallback(() => {
+    loadData();
+    fetchProfile?.();
+  }, [loadData, fetchProfile]);
+
+  useAutoRefresh(refreshAdmin);
 
   const handleStartEditNews = (item) => {
     setEditingNewsId(item.id);
@@ -428,9 +489,19 @@ const TmaAdmin = () => {
           <h2 className="text-2xl font-black text-slate-800 dark:text-white leading-tight">
             Панель управления
           </h2>
-          <span className="text-xs text-orange-500 font-bold uppercase tracking-wider">
-            {user?.role}
-          </span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {isSuperAdmin ? (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1 shadow-sm">
+                <Crown size={11} className="text-amber-500" />
+                Суперадминистратор
+              </span>
+            ) : (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-200 dark:border-orange-800 flex items-center gap-1 shadow-sm">
+                <Shield size={11} className="text-orange-500" />
+                Администратор
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -445,10 +516,10 @@ const TmaAdmin = () => {
       )}
 
       {/* Tabs */}
-      <div className="flex bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl mb-6">
+      <div className="flex bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl mb-6 overflow-x-auto no-scrollbar gap-1">
         <button
           onClick={() => setActiveTab('bets')}
-          className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${
+          className={`flex-1 min-w-[62px] py-2.5 text-xs font-bold rounded-lg transition-all ${
             activeTab === 'bets' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'
           }`}
         >
@@ -456,7 +527,7 @@ const TmaAdmin = () => {
         </button>
         <button
           onClick={() => setActiveTab('shop')}
-          className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${
+          className={`flex-1 min-w-[62px] py-2.5 text-xs font-bold rounded-lg transition-all ${
             activeTab === 'shop' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'
           }`}
         >
@@ -464,7 +535,7 @@ const TmaAdmin = () => {
         </button>
         <button
           onClick={() => setActiveTab('feedback')}
-          className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 min-w-[62px] py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'feedback' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'
           }`}
         >
@@ -477,7 +548,7 @@ const TmaAdmin = () => {
         </button>
         <button
           onClick={() => setActiveTab('news')}
-          className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 min-w-[62px] py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'news' ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm' : 'text-slate-500'
           }`}
         >
@@ -488,6 +559,20 @@ const TmaAdmin = () => {
             </span>
           )}
         </button>
+        {isSuperAdmin && (
+          <button
+            onClick={() => {
+              setActiveTab('roles');
+              fetchUsers(userSearch);
+            }}
+            className={`flex-1 min-w-[62px] py-2.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1 ${
+              activeTab === 'roles' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-600 dark:text-purple-400'
+            }`}
+          >
+            <Users size={12} />
+            <span>Роли</span>
+          </button>
+        )}
       </div>
 
       {/* === BETS TAB === */}
@@ -971,7 +1056,7 @@ const TmaAdmin = () => {
                             <span>@{item.username.replace(/^@/, '')}</span>
                           </a>
                         ) : (
-                          <span>@{item.user_id}</span>
+                          <span>ID: {item.user_id}</span>
                         )}
                         {item.first_name && item.first_name !== item.username && (
                           <span className="text-xs text-slate-400 font-medium">({item.first_name})</span>
@@ -1440,6 +1525,182 @@ const TmaAdmin = () => {
                 Новостей пока нет. Создайте первую новость выше!
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* === ROLES TAB (SUPERADMIN ONLY) === */}
+      {activeTab === 'roles' && isSuperAdmin && (
+        <div className="flex flex-col gap-5">
+          {/* Header Card */}
+          <div className="bg-gradient-to-br from-purple-900/40 via-purple-800/20 to-slate-900/40 p-4 rounded-2xl border border-purple-500/20">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Crown size={18} className="text-amber-400" />
+              <h3 className="font-black text-sm text-purple-200 dark:text-purple-100">
+                Управление доступом и ролями
+              </h3>
+            </div>
+            <p className="text-xs text-purple-300/80 leading-relaxed">
+              Только суперадминистратор может назначать администраторов и других суперадминов.
+            </p>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={userSearch}
+              onChange={(e) => {
+                const val = e.target.value;
+                setUserSearch(val);
+                fetchUsers(val);
+              }}
+              placeholder="Поиск по нику, @username или Telegram ID..."
+              className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 text-sm dark:text-white"
+            />
+            {userSearch && (
+              <button
+                onClick={() => {
+                  setUserSearch('');
+                  fetchUsers('');
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+
+          {/* Users List */}
+          <div className="flex flex-col gap-3">
+            {loadingUsers && (
+              <div className="flex items-center justify-center py-10 text-xs text-slate-400">
+                <RefreshCw size={16} className="animate-spin mr-2 text-purple-500" />
+                Загрузка списка пользователей...
+              </div>
+            )}
+
+            {!loadingUsers && usersList.length === 0 && (
+              <div className="text-center py-12 text-slate-400 text-xs font-medium bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                Пользователи не найдены
+              </div>
+            )}
+
+            {!loadingUsers && usersList.map((u) => {
+              const isCurrentUser = u.tg_id === user?.tg_id;
+              const isUpdating = roleUpdatingId === u.tg_id;
+
+              return (
+                <div 
+                  key={u.tg_id}
+                  className={`bg-white dark:bg-slate-800 rounded-2xl p-4 border transition-all shadow-sm ${
+                    u.role === 'superadmin'
+                      ? 'border-purple-200 dark:border-purple-900/60 bg-purple-50/20 dark:bg-purple-950/10'
+                      : u.role === 'admin'
+                      ? 'border-orange-200 dark:border-orange-900/50'
+                      : 'border-slate-100 dark:border-slate-700/70'
+                  }`}
+                >
+                  {/* User info row */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-3">
+                      {/* Avatar */}
+                      <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-black text-xs text-slate-600 dark:text-slate-200 shrink-0 overflow-hidden border border-slate-200 dark:border-slate-600">
+                        {u.avatar_url ? (
+                          <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          (u.username || u.first_name || 'U').slice(0, 2).toUpperCase()
+                        )}
+                      </div>
+
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-sm text-slate-800 dark:text-white truncate">
+                            {u.custom_name || u.first_name || u.username || 'Пользователь'}
+                          </span>
+                          {isCurrentUser && (
+                            <span className="px-1.5 py-0.2 text-[10px] font-bold rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                              Вы
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-400">
+                          {u.username && <span>@{u.username}</span>}
+                          <span className="font-mono text-[11px]">ID: {u.tg_id}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Current role badge */}
+                    <div className="shrink-0">
+                      {u.role === 'superadmin' ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1">
+                          <Crown size={10} className="text-amber-500" />
+                          Суперадмин
+                        </span>
+                      ) : u.role === 'admin' ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-200 dark:border-orange-800 flex items-center gap-1">
+                          <Shield size={10} className="text-orange-500" />
+                          Админ
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                          Студент
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Role Switcher Buttons */}
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-slate-400 mr-1">Назначить:</span>
+                    
+                    <button
+                      onClick={() => handleRoleChange(u, 'user')}
+                      disabled={isCurrentUser || isUpdating || u.role === 'user'}
+                      className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition ${
+                        u.role === 'user'
+                          ? 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-default'
+                          : isCurrentUser
+                          ? 'opacity-30 cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-400'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      Студент
+                    </button>
+
+                    <button
+                      onClick={() => handleRoleChange(u, 'admin')}
+                      disabled={isCurrentUser || isUpdating || u.role === 'admin'}
+                      className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition ${
+                        u.role === 'admin'
+                          ? 'bg-orange-500 text-white cursor-default shadow-sm'
+                          : isCurrentUser
+                          ? 'opacity-30 cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-400'
+                          : 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-200/60 dark:border-orange-800/40 hover:bg-orange-100'
+                      }`}
+                    >
+                      Админ
+                    </button>
+
+                    <button
+                      onClick={() => handleRoleChange(u, 'superadmin')}
+                      disabled={isCurrentUser || isUpdating || u.role === 'superadmin'}
+                      className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition ${
+                        u.role === 'superadmin'
+                          ? 'bg-purple-600 text-white cursor-default shadow-sm'
+                          : isCurrentUser
+                          ? 'opacity-30 cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-400'
+                          : 'bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200/60 dark:border-purple-800/40 hover:bg-purple-100'
+                      }`}
+                    >
+                      Суперадмин
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

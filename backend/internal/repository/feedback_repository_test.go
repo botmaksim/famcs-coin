@@ -58,3 +58,19 @@ func TestFeedbackRepository_UpdateStatus(t *testing.T) {
 	err = repo.UpdateStatus(context.Background(), 1, "reviewed")
 	assert.NoError(t, err)
 }
+
+func TestFeedbackRepository_DeleteFeedback(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	assert.NoError(t, err)
+	defer mock.Close()
+
+	repo := NewFeedbackRepository(mock)
+
+	mock.ExpectExec("^DELETE FROM feedbacks WHERE id = \\$1$").
+		WithArgs(1).
+		WillReturnResult(pgxmock.NewResult("DELETE", 1))
+
+	err = repo.DeleteFeedback(context.Background(), 1)
+	assert.NoError(t, err)
+}
+

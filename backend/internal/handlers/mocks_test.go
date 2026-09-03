@@ -48,6 +48,14 @@ func (m *MockUserRepository) ProcessClick(ctx context.Context, userID int64, coi
 	return args.Get(0).(float64), args.Int(1), args.Error(2)
 }
 
+func (m *MockUserRepository) SearchUsers(ctx context.Context, query string, limit int) ([]models.User, error) {
+	args := m.Called(ctx, query, limit)
+	if args.Get(0) != nil {
+		return args.Get(0).([]models.User), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 type MockShopRepository struct {
 	mock.Mock
 }

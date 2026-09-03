@@ -15,11 +15,7 @@ apiClient.interceptors.request.use(
     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
       config.headers.Authorization = `tma ${window.Telegram.WebApp.initData}`;
     } 
-    // Priority 2: Web Admin auth token
-    else if (localStorage.getItem('web_admin_auth')) {
-      config.headers.Authorization = `Bearer ${localStorage.getItem('web_admin_auth')}`;
-    } 
-    // Priority 3: Web User JWT token
+    // Priority 2: Web User JWT token
     else if (localStorage.getItem('web_user_token')) {
       config.headers.Authorization = `Bearer ${localStorage.getItem('web_user_token')}`;
     } 
@@ -48,7 +44,7 @@ apiClient.interceptors.response.use(
           console.log('Session expired, triggering refresh rotation...');
           // Since it's a TMA, we'd normally just rely on Telegram's initData being valid or call an API to rotate JWT tokens if we're using them on the web side.
           
-          if (localStorage.getItem('web_admin_auth') || localStorage.getItem('web_user_token')) {
+          if (localStorage.getItem('web_user_token')) {
              // Example refresh token rotation (to be implemented with actual endpoint)
              // const refreshRes = await axios.post(`${API_URL}/auth/refresh`);
              // localStorage.setItem('web_user_token', refreshRes.data.token);
