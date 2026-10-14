@@ -1,27 +1,81 @@
-# FAMCS Coin 
+# FAMCS-Coin: Telegram Mini App Clicker & Prediction Market
 
-A Telegram Mini App clicker game with event betting, shop upgrades, and a public leaderboard. Built with React, Go, and PostgreSQL.
+[![Go 1.22+](https://img.shields.io/badge/Go-1.22%2B-00ADD8.svg)](https://go.dev/)
+[![React 18](https://img.shields.io/badge/React-18-cyan.svg)](https://react.dev/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue.svg)](https://postgresql.org/)
+[![Telegram TMA](https://img.shields.io/badge/Telegram-Mini%20App-2CA5E0.svg)](https://core.telegram.org/bots/webapps)
+[![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://docker.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-##  Stack
-- **Frontend:** React (Vite), Tailwind CSS 4, TMA SDK
-- **Backend:** Go 1.25, pgx, Telegram Bot API
-- **Database:** PostgreSQL 15
-- **Infrastructure:** Docker, Cloudflare Tunnel (for testing)
+FAMCS-Coin is a high-load Telegram Mini App clicker game and event prediction market built for university community engagement. Engineered with a concurrent Go REST API, PostgreSQL database, and React frontend, the platform features transactional coin generation, shop upgrades, real-time betting, and global leaderboards.
 
-##  How to run locally (Development)
-1. Install dependencies in `/frontend` and `/backend`.
-2. Configure your database and `.env`.
-3. Run the backend: `cd backend && go run main.go`
-4. Run the frontend: `cd frontend && npm run dev`
+---
 
-##  How to run in Docker for testing (with automatic HTTPS)
-Perfect for testing inside Telegram as a TMA:
-1. Fill in your `.env` file (ensure `TG_BOT_TOKEN` is set).
-2. Run `docker compose -f docker-compose.test.yml up -d --build`
-3. Find your temporary HTTPS URL by running: `docker compose -f docker-compose.test.yml logs tunnel | grep "https://"`
-4. Paste this URL into your bot's WebApp settings via BotFather.
+## Table of Contents
+1. [Platform Capabilities](#platform-capabilities)
+2. [System Architecture](#system-architecture)
+3. [Prerequisites](#prerequisites)
+4. [Deployment](#deployment)
+5. [Directory Structure](#directory-structure)
+6. [License](#license)
 
-##  How to run in Production
-1. Configure your DNS A-record to point to your server (e.g., `coin.mybsu.online`).
-2. Run `docker compose -f docker-compose.prod.yml up -d --build`.
-3. Configure Nginx/Caddy on your host machine to reverse proxy traffic to `127.0.0.1:8000` and issue an SSL certificate via Certbot.
+---
+
+## Platform Capabilities
+
+* **Clicker Economy**: Low-latency coin generation with rate limiting and automated anti-cheat validation.
+* **Event Betting**: Real-time prediction markets on university contests and community challenges.
+* **Shop Upgrades**: Passive click income multipliers, stamina boosters, and cosmetic items.
+* **Global Leaderboard**: Aggregated scoreboards ranking players by total volume and net worth.
+
+---
+
+## System Architecture
+
+* **Backend Service**: Go daemon utilizing connection-pooled PostgreSQL queries and atomic transactions for balance integrity.
+* **Client Frontend**: React 18 single-page application integrated with Telegram WebApp SDK for user authentication.
+* **Containerization**: Docker Compose orchestrating database, backend, and frontend containers across production and test environments.
+
+---
+
+## Prerequisites
+
+* Docker and Docker Compose
+* Go 1.22+ and Node.js 20+ for native development
+
+---
+
+## Deployment
+
+Deploy using Docker Compose:
+
+```bash
+git clone git@github.com:botmaksim/famcs-coin.git
+cd famcs-coin
+
+docker compose up --build -d
+```
+
+---
+
+## Directory Structure
+
+```text
+famcs-coin/
+├── docker-compose.yml       # Production stack orchestration
+├── docker-compose.test.yml  # Integration test environment
+├── Makefile                 # Build and migration targets
+├── backend/                 # Go REST backend service
+│   ├── main.go              # Server bootstrap and router
+│   ├── handlers/            # Coin click, betting, and shop endpoints
+│   └── db/                  # SQL queries and connection pool
+└── frontend/                # React client application
+    ├── src/                 # UI components and Telegram SDK bridge
+    └── package.json         # Node.js dependencies
+```
+
+---
+
+## License
+
+This project is open-source software licensed under the [MIT License](LICENSE).
